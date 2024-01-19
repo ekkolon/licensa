@@ -1,0 +1,15 @@
+{
+  "type": "MIT",
+  "author": "Nelson Dominguez",
+  "year": 2024,
+  "generator": {
+    "spdxOnly": true,
+    "licenseFile": "./LICENSE",
+    "allowedTypes": [
+      "mit",
+      "apache"
+    ],
+    "include": [],
+    "exclude": []
+  }
+}
