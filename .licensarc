@@ -1,5 +1,5 @@
 {
-  "type": "MIT",
+  "type": "Apache-2.0",
   "author": "Nelson Dominguez",
   "year": 2024,
   "generator": {
@@ -9,7 +9,7 @@
       "mit",
       "apache"
     ],
-    "include": [],
-    "exclude": []
+    "ignorePatterns": [],
+    "gitignore": true
   }
 }

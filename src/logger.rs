@@ -12,23 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::utils;
-use crate::validator;
+use chrono::Local;
+use env_logger::Builder;
+use log::LevelFilter;
+use std::io::Write;
 
-use clap::Args;
-
-#[derive(Args, Debug)]
-pub struct ApplyArgs {
-  /// License type as SPDX id.
-  #[arg(short, long)]
-  pub license: String,
-
-  /// The copyright owner.
-  #[arg(short, long)]
-  pub author: String,
-
-  /// The copyright year.
-  #[arg(short, long, value_parser = validator::acceptable_year)]
-  #[arg(default_value_t = utils::current_year())]
-  pub year: u16,
+pub fn init() {
+  Builder::new()
+    .format(|buf, record| {
+      writeln!(
+        buf,
+        "{} [{}] - {}",
+        Local::now().format("%Y-%m-%dT%H:%M:%S"),
+        record.level(),
+        record.args()
+      )
+    })
+    .filter(None, LevelFilter::Info)
+    .init();
 }

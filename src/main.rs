@@ -15,43 +15,48 @@
 #![allow(dead_code, unused_variables)]
 
 mod cli;
+mod config;
 mod env;
+mod logger;
 mod spdx;
-mod template;
+mod store;
 mod utils;
 mod validator;
 
 use clap::Parser;
-use spdx::{SpdxTemplateRef, TemplateRef, TemplateStore};
+use cli::Commands;
+use store::{LicenseRef, LicenseStore};
 
 use crate::cli::Cli;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+  // Configure logging
+  logger::init();
+
   let http_client = reqwest::Client::new();
-  let template_store = TemplateStore::new(&http_client);
+  let license_store = LicenseStore::new(&http_client);
+
   let cli = Cli::parse();
 
-  // println!("{:?}", cli);
+  match &cli.command {
+    Commands::Init(args) => {
+      // Fetch provided license from local or remote store.
+      let config = config::Config::parse()?;
+      println!("{:#?}", &config);
+      //
+    }
 
-  let template_ref = SpdxTemplateRef {
-    spdx_id: "Apache-2.0".into(),
+    Commands::Apply(args) => {
+      // Fetch provided license from local or remote store.
+      let license_ref = LicenseRef::new(&args.license);
+      let template = license_store.fetch_template(license_ref).await?;
+
+      //
+    }
+
+    Commands::Verify(args) => {}
   };
-
-  template_store.fetch(template_ref).await?;
-
-  // spdx::confirm_remote_fetch(test_spdx_id)?;
-  // spdx::fetch_remote_template(test_spdx_id).await?;
-  // println!("CWD {}", cwd.display());y
-
-  // let patterns = glob("./**/*.rs").expect("Failed to read glob pattern");
-
-  // for entry in patterns {
-  //   match entry {
-  //     Ok(path) => println!("{:?}", path.display()),
-  //     Err(e) => println!("{:?}", e),
-  //   }
-  // }
 
   Ok(())
 }

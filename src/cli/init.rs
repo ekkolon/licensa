@@ -18,14 +18,14 @@ use crate::validator;
 use clap::Args;
 
 #[derive(Args, Debug)]
-pub struct ApplyArgs {
+pub struct InitArgs {
   /// License type as SPDX id.
   #[arg(short, long)]
-  pub license: String,
+  pub license: Option<String>,
 
   /// The copyright owner.
   #[arg(short, long)]
-  pub author: String,
+  pub author: Option<String>,
 
   /// The copyright year.
   #[arg(short, long, value_parser = validator::acceptable_year)]

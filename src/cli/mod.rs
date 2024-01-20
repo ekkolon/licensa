@@ -13,13 +13,14 @@
 // limitations under the License.
 
 mod apply;
+mod init;
 mod verify;
 
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use self::{apply::ApplyArgs, verify::VerifyArgs};
+use self::{apply::ApplyArgs, init::InitArgs, verify::VerifyArgs};
 
 /// Licensia is an experimental CLI tool to enforce, verify, apply and modify
 /// file license headers for a variaty of programming languages.
@@ -39,11 +40,16 @@ pub struct Cli {
   pub verbose: bool,
 
   #[command(subcommand)]
-  command: Option<Commands>,
+  pub command: Commands,
 }
 
 #[derive(Subcommand, Debug)]
-enum Commands {
+pub enum Commands {
+  /// Verify presence of license headers in one or more files.
+  ///
+  /// A glob pattern may be used to verify multiple files that recursively.
+  Init(InitArgs),
+
   /// Verify presence of license headers in one or more files.
   ///
   /// A glob pattern may be used to verify multiple files that recursively.
