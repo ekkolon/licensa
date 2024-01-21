@@ -48,15 +48,18 @@ pub enum Commands {
   /// Verify presence of license headers in one or more files.
   ///
   /// A glob pattern may be used to verify multiple files that recursively.
+  #[command(name = "init")]
   Init(InitArgs),
 
   /// Verify presence of license headers in one or more files.
   ///
   /// A glob pattern may be used to verify multiple files that recursively.
+  #[command(name = "verify")]
   Verify(VerifyArgs),
 
   /// Apply license header to one or more files.
   ///
   /// A glob pattern can be used to run this command on matches recursively.
+  #[command(name = "apply")]
   Apply(ApplyArgs),
 }

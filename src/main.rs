@@ -23,19 +23,28 @@ mod store;
 mod utils;
 mod validator;
 
-use clap::Parser;
+use clap::{error::ErrorKind, CommandFactory, Parser};
 use cli::Commands;
-use store::{LicenseRef, LicenseStore};
+use mimalloc::MiMalloc;
+use spdx::license::SpdxLicenseStore;
+use store::LicenseRef;
 
 use crate::cli::Cli;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Configure logging
   logger::init();
 
+  // let item = spdx::license::find_license_item("mit");
+  // println!("LICENSE LIST ITEM: {:#?}", item);
+
   let http_client = reqwest::Client::new();
-  let license_store = LicenseStore::new(&http_client);
+  // let license_store = LicenseStore::new(&http_client);
+  let license_store = SpdxLicenseStore::new(&http_client);
 
   let cli = Cli::parse();
 
@@ -50,9 +59,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Commands::Apply(args) => {
       // Fetch provided license from local or remote store.
       let license_ref = LicenseRef::new(&args.license);
-      let template = license_store.fetch_template(license_ref).await?;
-
-      //
+      let license = license_store.fetch_license_details(&args.license).await;
+      if let Err(fetch_error) = license {
+        Cli::command()
+          .error(ErrorKind::Io, fetch_error.to_string())
+          .exit()
+      } else {
+        println!("{:#?} License details: {:#?}", &args.license, &license);
+        return Ok(());
+      };
     }
 
     Commands::Verify(args) => {}

@@ -23,6 +23,25 @@ use crate::utils;
 const DEFAULT_LICENSE_TYPE: &str = "MIT";
 const CONFIG_FILE_NAME: &str = ".licensarc";
 
+/// Represents the container for a Licensa config file that may be
+/// included in root directory of a software project.
+///
+/// A Licensa config file contains workspace-wide config presets.
+/// If a config file is present in the same directory a Licensa command
+/// is executed in, the provided config fields will be merged into
+/// the command arguments, replacing the specific command's default
+/// argument settings.
+///
+/// CLI arguments **always** take precedence over options provided
+/// in the config file. An exeception to that rule is when a command
+/// accepts a `--config` flag, which, when present, explicitly requests
+/// the usage of a specific Licensa config file.
+///
+/// It is assumed the file is in valid JSON format and be one of the
+/// following filenames:
+///
+///   - `.licensarc`
+///   - `.licensa.json`
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -68,7 +87,7 @@ pub struct GeneratorConfig {
   pub gitignore: bool,
 }
 
-fn default_ignore_patterns<'a>() -> Vec<String> {
+fn default_ignore_patterns() -> Vec<String> {
   vec![]
 }
 
@@ -80,6 +99,6 @@ fn default_spdx_only_flag() -> bool {
   false
 }
 
-fn default_allowed_licenses<'a>() -> Vec<String> {
+fn default_allowed_licenses() -> Vec<String> {
   vec!["*".to_string()]
 }

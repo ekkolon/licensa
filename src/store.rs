@@ -102,11 +102,12 @@ impl<'a> LicenseStore<'a> {
     fs::create_dir_all(templates_dir())?;
 
     // Write raw license template to
-    fs::write(&template.path(), &template.content())?;
+    fs::write(template.path(), template.content())?;
 
     Ok(())
   }
 
+  #[inline]
   pub fn new(http_client: &'a Client) -> Arc<Self> {
     Arc::new(Self { http: http_client })
   }
@@ -118,6 +119,7 @@ pub struct LicenseRef {
 }
 
 impl LicenseRef {
+  #[inline]
   pub fn new<T>(spdx_id: T) -> Self
   where
     T: AsRef<str>,
@@ -129,6 +131,7 @@ impl LicenseRef {
 }
 
 impl SpdxIdentifier for LicenseRef {
+  #[inline]
   fn spdx_id(&self) -> String {
     self.spdx_id.clone()
   }

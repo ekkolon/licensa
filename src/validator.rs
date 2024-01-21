@@ -38,6 +38,7 @@ pub fn acceptable_year(s: &str) -> Result<u16, String> {
   }
 }
 
+#[inline]
 fn get_acceptable_year_range() -> RangeInclusive<u16> {
   EARLIEST_LICENSE_YEAR..=current_year()
 }

@@ -1,5 +1,5 @@
 [package]
-name = "licensia"
+name = "licensa"
 version = "0.1.0"
 edition = "2021"
 description = "CLI tool to enforce, verify, apply and modify file license headers"
@@ -11,6 +11,9 @@ rust-version = "1.75.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+# [build-dependencies]
+# lazy_static = "1"
+
 [dependencies]
 chrono = { version = "0.4.31" }
 clap = { version = "4.4.18", features = ["derive"] }
@@ -21,9 +24,24 @@ log = "0.4.20"
 reqwest = "0.11.23"
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
-serde_yaml = "0.9.30"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-url = "2.5.0"
+url = { version = "2.5.0", features = ["serde"] }
+mimalloc = { version = "*", default-features = false }
+lazy_static = "1"
+thiserror = "1.0.56"
+anyhow = "1.0.79"
+derive_more = { version = "0.99.17", features = ["display"] }
 
 [badges]
 maintenance = { status = "experimental" }
+
+[profile.dev]
+# Disabling debug info speeds up builds a bunch and we don't rely on it for debugging that much.
+debug = 0
+
+[profile.release]
+lto = true
+opt-level = "s"
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"

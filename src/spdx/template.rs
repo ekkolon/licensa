@@ -30,12 +30,14 @@ pub struct Template {
 }
 
 impl SpdxIdentifier for Template {
+  #[inline]
   fn spdx_id(&self) -> String {
     self.spdx_id.clone()
   }
 }
 
 impl HasContent for Template {
+  #[inline]
   fn content(&self) -> String {
     self.content.clone()
   }
@@ -43,6 +45,7 @@ impl HasContent for Template {
 
 pub trait TemplateRef: SpdxIdentifier {
   /// Returns the remote GitHub URL to the template file's content.
+  #[inline]
   fn remote_url(&self) -> Result<url::Url, Box<dyn std::error::Error>> {
     url::Url::parse(SPDX_LICENSE_DATA_REMOTE_URL)?
       .join(&self.filename())
@@ -50,11 +53,13 @@ pub trait TemplateRef: SpdxIdentifier {
   }
 
   /// Returns the full path of the file in the local store.
+  #[inline]
   fn path(&self) -> PathBuf {
     templates_dir().join(self.filename())
   }
 
   /// Returns the filename for the template ref.
+  #[inline]
   fn filename(&self) -> String {
     format!("{}.{}", &self.spdx_id_lower(), TEMPLATE_FILE_FORMAT)
   }
@@ -91,7 +96,7 @@ pub trait Interpolate {
   /// Remove the newline after the last occurrence of "---".
   ///
   /// If "---" is not found, return the entire input
-  fn interpolate<'a>(&self) -> Result<String, Box<dyn std::error::Error>>;
+  fn interpolate(&self) -> Result<String, Box<dyn std::error::Error>>;
 }
 
 pub trait Extractor {
@@ -99,7 +104,7 @@ pub trait Extractor {
   /// Remove the newline after the last occurrence of "---".
   ///
   /// If "---" is not found, return the entire input
-  fn extract<'a>(&self) -> Result<String, Box<dyn std::error::Error>>;
+  fn extract(&self) -> Result<String, Box<dyn std::error::Error>>;
 }
 
 pub trait HasContent {
@@ -113,7 +118,9 @@ pub struct LicenseHeader {
 }
 
 // Extract license metadata
-fn extract_license_header(lines: &mut Lines) -> Result<LicenseHeader, Box<dyn std::error::Error>> {
+fn extract_license_header(
+  lines: &mut Lines,
+) -> Result<LicenseHeader, Box<dyn std::error::Error>> {
   let metadata_lines: Vec<&str> = lines
     .enumerate()
     .skip(1)
@@ -128,12 +135,12 @@ fn extract_license_header(lines: &mut Lines) -> Result<LicenseHeader, Box<dyn st
 
   let title = metadata_lines
     .first()
-    .expect(invalid_field_error("title").as_str())
+    .unwrap_or_else(|| panic!("{}", invalid_field_error("title")))
     .to_string();
 
   let spdx_id = metadata_lines
     .last()
-    .expect(invalid_field_error("spdx_id").as_str())
+    .unwrap_or_else(|| panic!("{}", invalid_field_error("spdx_id")))
     .to_string();
 
   Ok(LicenseHeader { title, spdx_id })
@@ -154,6 +161,7 @@ where
   }
 }
 
+#[inline]
 fn invalid_field_error<F>(field: F) -> String
 where
   F: AsRef<str> + Debug,
