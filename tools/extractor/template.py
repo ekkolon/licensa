@@ -4,6 +4,7 @@ import os
 import requests
 from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
+from utils import extract_license_fields
 
 GITHUB_LICENSES_URL_BASE = (
     "https://raw.githubusercontent.com/github/choosealicense.com/gh-pages/_licenses"
@@ -38,6 +39,7 @@ class LicenseRef:
         self.spdx_id = None
         self.has_header = False
         self.nickname = None
+        self.fields = []
 
         self.template: str = None
         self.template_path = None
@@ -71,6 +73,7 @@ class LicenseRef:
             "nickname": self.nickname,
             "hasHeader": self.has_header,
             "templateUrl": self.template_url,
+            "fields": self.fields,
         }
 
     def save_template(self):
@@ -102,6 +105,8 @@ class LicenseRef:
         """
         if self.template is None:
             raise ValueError("Cannot access template before it has been fetched")
+
+        self.fields = extract_license_fields(self.template)
 
         lines = self.template.splitlines()
 
