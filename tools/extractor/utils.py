@@ -31,7 +31,7 @@ FIELD_MAP = {
 }
 
 
-def extract_license_variables(text, variables=VARIABLES, field_map=FIELD_MAP):
+def extract_license_fields(text, variables=VARIABLES, field_map=FIELD_MAP):
     """
     Extracts interpolatable string from the given text.
 
