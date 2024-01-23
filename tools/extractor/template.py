@@ -67,6 +67,7 @@ class LicenseRef:
         return {
             "name": self.name,
             "spdxId": self.spdx_id,
+            "spdxIdLower": self.spdx_id_lower,
             "nickname": self.nickname,
             "hasHeader": self.has_header,
             "templateUrl": self.template_url,
