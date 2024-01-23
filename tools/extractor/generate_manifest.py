@@ -1,21 +1,20 @@
 import argparse
 import errno
-import json
+import logging
 import os
 import sys
 from pathlib import Path
 
-from logger import logger as log
+from rich.logging import RichHandler
 from selenium import webdriver
 from template import LicenseStore
 
-# Configure logging
-# log.basicConfig(
-#     level=log.INFO,
-#     stream=sys.stdout,
-#     format="%(asctime)s - %(levelname)s - %(message)s",
-#     datefmt="%Y-%m-%d %H:%M:%S",
-# )
+logging.basicConfig(
+    level=logging.INFO, format="%(message)s", datefmt="[%X]", handlers=[RichHandler()]
+)
+
+log = logging.getLogger("rich")
+
 
 # Create a new instance of the Chrome driver with specific options
 options = webdriver.ChromeOptions()
