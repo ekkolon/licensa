@@ -1,9 +1,9 @@
 import unittest
 
-from utils import extract_license_variables
+from utils import extract_license_fields
 
 
-class TestExtractLicenseVariables(unittest.TestCase):
+class TestExtractLicenseFields(unittest.TestCase):
     def setUp(self):
         self.variables = [
             "project",
@@ -35,35 +35,35 @@ class TestExtractLicenseVariables(unittest.TestCase):
     def test_extract_square_bracket_variables(self):
         text = "Copyright (C) [year] [fullname] <email>"
 
-        result = extract_license_variables(text, self.variables, self.field_map)
+        result = extract_license_fields(text, self.variables, self.field_map)
 
         self.assertCountEqual(result, ["year", "fullname", "email"])
 
     def test_extract_angle_bracket_variables(self):
         text = "Copyright (C) <year> <fullname> [email]"
 
-        result = extract_license_variables(text, self.variables, self.field_map)
+        result = extract_license_fields(text, self.variables, self.field_map)
 
         self.assertCountEqual(result, ["year", "fullname", "email"])
 
     def test_extract_mixed_bracket_variables(self):
         text = "Copyright (C) [year] <fullname> [email]"
 
-        result = extract_license_variables(text, self.variables, self.field_map)
+        result = extract_license_fields(text, self.variables, self.field_map)
 
         self.assertCountEqual(result, ["year", "fullname", "email"])
 
     def test_no_matching_variables(self):
         text = "Copyright (C) All rights reserved."
 
-        result = extract_license_variables(text, self.variables, self.field_map)
+        result = extract_license_fields(text, self.variables, self.field_map)
 
         self.assertEqual(result, [])
 
     def test_empty_text(self):
         text = ""
 
-        result = extract_license_variables(text, self.variables, self.field_map)
+        result = extract_license_fields(text, self.variables, self.field_map)
 
         self.assertEqual(result, [])
 
@@ -72,7 +72,7 @@ class TestExtractLicenseVariables(unittest.TestCase):
             "[project] is developed by [name of author]. Contact [email] for details."
         )
 
-        result = extract_license_variables(text, self.variables, self.field_map)
+        result = extract_license_fields(text, self.variables, self.field_map)
 
         self.assertCountEqual(result, ["project", "fullname", "email"])
 
