@@ -64,12 +64,11 @@ class LicenseRef:
             dict: LicenseRef data.
         """
         return {
-            "has_header": self.has_header,
-            "spdx_id": self.spdx_id,
             "name": self.name,
-            "template_url": self.template_url,
-            "nickname": self.nickname
-            # TODO: Add template interpolate fields
+            "spdxId": self.spdx_id,
+            "nickname": self.nickname,
+            "hasHeader": self.has_header,
+            "templateUrl": self.template_url,
         }
 
     def save_template(self):
