@@ -16,6 +16,25 @@ CHOOSEALICENSE_URL = "https://choosealicense.com/appendix/"
 
 class LicenseRef:
     def __init__(self, name: str, spdx_id_lower: str):
+        """
+        Represents a license reference with metadata and template information.
+
+        Parameters:
+            name (str): The name of the license.
+            spdx_id_lower (str): The SPDX identifier in lowercase.
+
+        Attributes:
+            name (str): The name of the license.
+            spdx_id_lower (str): The SPDX identifier in lowercase.
+            spdx_id (str): The SPDX identifier.
+            has_header (bool): Indicates if the license has a header.
+            nickname (str): The nickname of the license.
+            fields (list): List of fields extracted from the license template.
+            template (str): The content of the license template.
+            template_path (str): The local path where the template is stored.
+            template_url (str): The URL to fetch the license template.
+            header_path (str): The local path where the license header is stored.
+        """
         self.name = name
         self.spdx_id_lower = spdx_id_lower
         self.template_url = self._generate_template_url()
@@ -27,6 +46,12 @@ class LicenseRef:
         self.nickname = None
 
     def fetch_template(self):
+        """
+        Fetches the license template content from the template URL.
+
+        Returns:
+            str: The content of the license template.
+        """
         res = requests.get(self.template_url)
         self.template = res.text
         self._extract_meta()
@@ -34,6 +59,12 @@ class LicenseRef:
 
     @property
     def data(self):
+        """
+        Returns a dictionary representation of the LicenseRef instance.
+
+        Returns:
+            dict: LicenseRef data.
+        """
         return {
             "has_header": self.has_header,
             "spdx_id": self.spdx_id,
@@ -44,6 +75,12 @@ class LicenseRef:
         }
 
     def save_template(self):
+        """
+        Saves the license template to the specified template_path.
+
+        Raises:
+            ValueError: If the template is empty or the template_path is not valid.
+        """
         if self.template is None:
             raise ValueError("Cannot save empty license template")
 
@@ -61,13 +98,9 @@ class LicenseRef:
         """
         Extracts license metadata from a multiline string.
 
-        Parameters:
-            content (str): Multiline string containing license metadata.
-
-        Returns:
-            LicenseHeader: Extracted license metadata.
+        Raises:
+            ValueError: If the template is accessed before it has been fetched.
         """
-
         if self.template is None:
             raise ValueError("Cannot access template before it has been fetched")
 
@@ -112,6 +145,12 @@ class LicenseRef:
         return f"Failed to determine license header field: {field}"
 
     def _generate_template_url(self):
+        """
+        Generates the URL to fetch the license template.
+
+        Returns:
+            str: The URL to fetch the license template.
+        """
         return "{}/{}.txt".format(GITHUB_LICENSES_URL_BASE, self.spdx_id_lower)
 
 
@@ -124,6 +163,16 @@ class LicenseStore:
         templates_dir,
         headers_dir,
     ):
+        """
+        Manages the storage and retrieval of license templates and metadata.
+
+        Parameters:
+            driver (WebDriver): The Selenium WebDriver instance.
+            out_dir (str): The output directory for storing templates and metadata.
+            manifest_name (str): The name of the manifest file.
+            templates_dir (str): The directory for storing license templates.
+            headers_dir (str): The directory for storing license headers.
+        """
         self.driver = driver
         self.out_dir = out_dir
         self.manifest_name = manifest_name
@@ -136,16 +185,17 @@ class LicenseStore:
         self.ids: list[str] = []
 
     def save_templates(self) -> None:
+        """Saves all license templates to their respective template paths."""
         for license in self.licenses:
             license.save_template()
 
     def fetch_templates(self) -> None:
+        """Fetches all license templates."""
         for license in self.licenses:
             license.fetch_template()
 
     def fetch_metadata(self):
-        """Find and print license file names and SPDX identifiers"""
-
+        """Finds and prints license file names and SPDX identifiers."""
         self.driver.get(CHOOSEALICENSE_URL)
 
         license_link_selector = 'body > div > table > tbody > tr > th[scope="row"] a'
@@ -159,19 +209,28 @@ class LicenseStore:
         self.num_licenses = len(self.licenses)
 
     def generate_manifest(self):
+        """Generates a manifest file containing license metadata."""
         out_path = os.path.join(self.out_dir, self.manifest_name)
         with open(out_path, "wt", encoding="utf-8") as f:
             json.dump(self.data, f, indent=2)
 
     def serialize(self):
+        """Serializes license metadata to a JSON-formatted string."""
         return json.dumps(self.data, indent=2)
 
     def deserialize(self):
+        """Deserializes license metadata from a JSON-formatted string."""
         content = self.serialize()
         return json.loads(content)
 
     @property
     def data(self):
+        """
+        Returns a dictionary representation of the LicenseStore instance.
+
+        Returns:
+            dict: LicenseStore data.
+        """
         licenses = []
         for license in self.licenses:
             licenses.append(license.data)
@@ -183,9 +242,24 @@ class LicenseStore:
 
     @property
     def manifest_path(self):
+        """
+        Returns the path to the manifest file.
+
+        Returns:
+            str: The path to the manifest file.
+        """
         return os.path.join(self.out_dir, self.manifest_name)
 
     def _create_template_ref(self, web_element) -> LicenseRef:
+        """
+        Creates a LicenseRef instance from a Selenium WebElement.
+
+        Parameters:
+            web_element (WebElement): The Selenium WebElement.
+
+        Returns:
+            LicenseRef: The created LicenseRef instance.
+        """
         name = web_element.text
         spdx_id_lower = web_element.get_attribute("href").split("/").pop()
         license = LicenseRef(name, spdx_id_lower)
@@ -195,10 +269,28 @@ class LicenseStore:
         return license
 
     def _build_template_path(self, spdx_id: str):
+        """
+        Builds the path to a license template file.
+
+        Parameters:
+            spdx_id (str): The SPDX identifier.
+
+        Returns:
+            str: The path to the license template file.
+        """
         filename = "{}.txt".format(spdx_id.lower())
         return os.path.join(self.out_dir, self.templates_dir, filename)
 
     def _build_template_header_path(self, spdx_id: str):
+        """
+        Builds the path to a license header file.
+
+        Parameters:
+            spdx_id (str): The SPDX identifier.
+
+        Returns:
+            str: The path to the license header file.
+        """
         filename = "{}.txt".format(spdx_id.lower())
         return os.path.join(self.out_dir, self.headers_dir, filename)
 
