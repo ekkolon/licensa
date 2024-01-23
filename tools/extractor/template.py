@@ -211,6 +211,7 @@ class LicenseStore:
         out_path = os.path.join(self.out_dir, self.manifest_name)
         with open(out_path, "wt", encoding="utf-8") as f:
             json.dump(self.data, f, indent=2)
+            f.close()
 
     def serialize(self):
         """Serializes license metadata to a JSON-formatted string."""
