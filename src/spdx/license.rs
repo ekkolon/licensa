@@ -29,7 +29,7 @@ lazy_static! {
   // TODO: Improve error handling
   static ref LICENSES_METADATA: SpdxLicensesMetadata =
     serde_json::from_slice::<SpdxLicensesMetadata>(include_bytes!(
-      "../../licenses/licenses.manifest.json"
+      "../../licenses/metadata.json"
     ))
     .unwrap();
 }
