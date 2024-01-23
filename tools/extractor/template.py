@@ -3,8 +3,6 @@ import os
 
 import requests
 from selenium.webdriver.chrome.webdriver import WebDriver
-
-# from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 
 GITHUB_LICENSES_URL_BASE = (
@@ -293,25 +291,3 @@ class LicenseStore:
         """
         filename = "{}.txt".format(spdx_id.lower())
         return os.path.join(self.out_dir, self.headers_dir, filename)
-
-
-def extract_license_text(content: str):
-    """
-    Extracts license text from the input content.
-
-    Parameters:
-        content (str): The input content.
-
-    Returns:
-        str: Extracted license text.
-    """
-
-    slice_index = content.rfind("---")
-
-    if slice_index != -1:
-        # NOTE: Leave whitespaces untouched.
-        # Don't use methods like `.lstrip()` or `.rstrip()`.
-        result = content[slice_index + 5 :]
-        return result
-    else:
-        return content
