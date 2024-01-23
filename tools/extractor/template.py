@@ -35,13 +35,14 @@ class LicenseRef:
         """
         self.name = name
         self.spdx_id_lower = spdx_id_lower
-        self.template_url = self._generate_template_url()
-        self.has_header = False
         self.spdx_id = None
+        self.has_header = False
+        self.nickname = None
+
         self.template: str = None
         self.template_path = None
+        self.template_url = self._generate_template_url()
         self.header_path = None
-        self.nickname = None
 
     def fetch_template(self):
         """
