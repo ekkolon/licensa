@@ -1,12 +1,21 @@
 import argparse
 import errno
 import json
-from logger import logger
 import os
+import sys
 from pathlib import Path
 
+from logger import logger as log
 from selenium import webdriver
-from template import TemplateRefStore
+from template import LicenseStore
+
+# Configure logging
+# log.basicConfig(
+#     level=log.INFO,
+#     stream=sys.stdout,
+#     format="%(asctime)s - %(levelname)s - %(message)s",
+#     datefmt="%Y-%m-%d %H:%M:%S",
+# )
 
 # Create a new instance of the Chrome driver with specific options
 options = webdriver.ChromeOptions()
@@ -20,24 +29,21 @@ options.add_argument("--headless=new")
 
 driver = webdriver.Chrome(options=options)
 
+DEFAULT_TEMPLATES_DIR = "templates"
 
-TEMPLATES_OUT_DIR = "templates"
+DEFAULT_HEADERS_DIR = "headers"
 
-TEMPLATE_HEADERS_REL_DIR = "headers"
-
-LICENSE_MANIFEST = "licenses.manifest.json"
-
-
-parser = argparse.ArgumentParser(description="Fetch license metadata")
-parser.add_argument("-o", "--out-dir", required=True)
+DEFAULT_METADATA_FILENAME = "metadata.json"
 
 
-def _is_directory_empty(dir: str) -> bool:
-    return len(os.listdir(dir)) == 0
+def _raise_and_exit(msg: str):
+    exception = SystemExit(msg)
+    log.error(str(exception))
+    sys.exit(1)
 
 
-def _check_templates_out_dir(dir: str):
-    out_dir = os.path.join(dir, TEMPLATES_OUT_DIR)
+def _validate_out_dir(dir: str):
+    out_dir = os.path.join(dir, DEFAULT_TEMPLATES_DIR)
 
     try:
         os.makedirs(out_dir)
@@ -46,67 +52,49 @@ def _check_templates_out_dir(dir: str):
             raise
 
     if not Path(out_dir).is_dir():
-        raise argparse.ArgumentError(None, "'{}' is not a directory".format(out_dir))
+        _raise_and_exit("'{}' is not a directory".format(out_dir))
 
-    if not _is_directory_empty(out_dir):
-        raise argparse.ArgumentError(None, "'{}' is not empty".format(out_dir))
-
-
-def _build_template_header_path(spdx_id: str, out_dir: str):
-    filename = "{}.txt".format(spdx_id.lower())
-    return os.path.join(out_dir, TEMPLATE_HEADERS_REL_DIR, filename)
-
-
-def _build_template_path(spdx_id: str, out_dir: str):
-    filename = "{}.txt".format(spdx_id.lower())
-    return os.path.join(out_dir, TEMPLATES_OUT_DIR, filename)
-
-
-def _has_license_header(path: str):
-    return os.path.isfile(path)
-
-
-def _generate_license_manifest(out_dir: str, data):
-    out_path = os.path.join(out_dir, LICENSE_MANIFEST)
-    with open(out_path, "wt", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    if not len(os.listdir(out_dir)) == 0:
+        _raise_and_exit("Directory '{}' must be empty".format(out_dir))
 
 
 if __name__ == "__main__":
-    logger.info("Fetching licenses infos")
+    parser = argparse.ArgumentParser(description="Fetch license metadata")
+    parser.add_argument("-o", "--out-dir", required=True)
 
     args = parser.parse_args()
 
     out_dir_base = getattr(args, "out_dir")
     out_dir = os.path.abspath(out_dir_base)
-    # _check_templates_out_dir(out_dir)
+    _validate_out_dir(out_dir)
 
     # Find and print license information
     # =========================================================================
-    logger.info("Fetching licenses infos")
+    license_store = LicenseStore(
+        driver=driver,
+        out_dir=out_dir,
+        manifest_name=DEFAULT_METADATA_FILENAME,
+        templates_dir=DEFAULT_TEMPLATES_DIR,
+        headers_dir=DEFAULT_HEADERS_DIR,
+    )
 
-    store = TemplateRefStore(driver=driver)
-    store.fetch_available_licenses()
+    log.info("Fetching license metadata...")
+    license_store.fetch_metadata()
+    num_licenses = license_store.num_licenses
+    log.info("Found metadata for {} licenses".format(num_licenses))
+
     driver.quit()
 
-    licenses = store.licenses
-    logger.info("Found {} licenses".format(store.num_refs))
+    # =========================================================================
+    log.info("Fetching license templates...")
+    license_store.fetch_templates()
+    log.info("Succesfully fetched templates for {} licenses".format(num_licenses))
 
     # =========================================================================
-    logger.info("Start extracting licenses metadata from GitHub repository")
-
-    for license in licenses:
-        # Fetch the raw license template from the choosealicense repository
-        # and save it locally using the same file name.
-        license.fetch_template()
-
-        template_path = _build_template_path(license.spdx_id_lower, out_dir)
-        # license.save_template(template_path)
-        # logging.info("Successfully saved {} license template")
-
-        template_header_path = _build_template_header_path(license.spdx_id, out_dir)
-        license.has_header = _has_license_header(template_header_path)
+    log.info("Saving license templates...")
+    license_store.save_templates()
+    log.info('License templates saved at "{}"'.format(license_store.out_dir))
 
     # =========================================================================
-    # _generate_license_manifest(out_dir, licenses)
-    logger.info("Successfully saved {} file".format(LICENSE_MANIFEST))
+    license_store.generate_manifest()
+    log.info('Manifest file saved at: "{}"'.format(license_store.manifest_path))
