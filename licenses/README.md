@@ -12,6 +12,6 @@ This directory contains partially auto-generated licenses assets, therefore the 
 
   Contains copyright notices for licenses that provide a section about how to apply the license on a per-file basis.
 
-- `licenses.manifest.json`
+- `metadata.json`
 
   Auto-generated file containing licenses metadata such as SPDX ID, License name etc.
