@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::{error::Error, fmt, io};
+use std::io;
 
-use clap::error::ErrorKind;
-use derive_more::Display;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
