@@ -31,6 +31,7 @@ lazy_static = "1"
 thiserror = "1.0.56"
 anyhow = "1.0.79"
 derive_more = { version = "0.99.17", features = ["display"] }
+regex = "1.10.3"
 
 [badges]
 maintenance = { status = "experimental" }
