@@ -1,6 +1,10 @@
 use crate::utils::current_year;
 use serde::{Deserialize, Serialize};
 
+/// Represents a simple SPDX copyright notice.
+pub const SPDX_COPYRIGHT_NOTICE: &str = r#"Copyright $(year) $(fullname)
+SPDX-License-Identifier: $(license)"#;
+
 /// Represents a compact template for a copyright notice.
 pub const COMPACT_COPYRIGHT_NOTICE: &str = r#"Copyright $(year) $(fullname)
 
