@@ -37,6 +37,35 @@ pub fn current_year() -> u16 {
     .year() as u16
 }
 
+/// Writes pretty-formatted JSON data to a file, creating the file if it does not exist.
+///
+/// # Arguments
+///
+/// * `file_path` - The path to the file where JSON data will be written.
+/// * `json_data` - The JSON data to be written to the file.
+///
+/// # Errors
+///
+/// Returns an error if there are issues creating or writing to the file.
+pub fn write_json<P: AsRef<Path>>(
+  file_path: P,
+  json_data: &serde_json::Value,
+) -> Result<()> {
+  // Create or open the file for writing
+  let mut file = File::create(&file_path)?;
+
+  // Serialize the JSON data to a pretty-printed string
+  let json_string = serde_json::to_string_pretty(json_data)?;
+
+  // Write the pretty-printed JSON string to the file
+  file.write_all(json_string.as_bytes())?;
+
+  // Flush the buffer to ensure the data is written to the file
+  file.flush()?;
+
+  Ok(())
+}
+
 /// Checks if any of the specified filenames exist in the given path.
 ///
 /// # Arguments
@@ -84,6 +113,109 @@ mod tests {
 
     // Ensure that the current year matches the one obtained from chrono
     assert_eq!(current_year, chrono_current_year);
+  }
+
+  #[test]
+  fn test_write_json_successful() {
+    // Create a temporary directory for testing
+    let temp_dir = tempdir().expect("Failed to create temporary directory");
+
+    // Define the file path in the temporary directory
+    let file_path = temp_dir.path().join("output.json");
+
+    // Create a sample JSON value
+    let json_data = serde_json::json!({
+        "name": "John Doe",
+        "age": 30,
+        "city": "Example City"
+    });
+
+    // Test writing the JSON data to the file
+    write_json(&file_path, &json_data).expect("Failed to write JSON to file");
+
+    // Verify that the file exists
+    assert!(file_path.exists());
+
+    // Verify the content of the file
+    let mut file = File::open(&file_path).expect("Failed to open file");
+    let mut file_content = String::new();
+    file
+      .read_to_string(&mut file_content)
+      .expect("Failed to read file content");
+
+    let expected_content =
+      serde_json::to_string_pretty(&json_data).expect("Failed to serialize JSON");
+    assert_eq!(file_content, expected_content);
+
+    // Cleanup
+    drop(file_path);
+    temp_dir.close().expect("Failed to close temp directory");
+  }
+
+  #[test]
+  fn test_write_json_invalid_file_path() {
+    // Define an invalid file path (nonexistent directory)
+    let invalid_file_path = "/nonexistent_directory/output.json";
+
+    // Create a sample JSON value
+    let json_data = serde_json::json!({
+        "name": "John Doe",
+        "age": 30,
+        "city": "Example City"
+    });
+
+    // Test writing JSON to an invalid file path
+    let result = write_json(invalid_file_path, &json_data);
+    assert!(result.is_err());
+  }
+
+  #[test]
+  fn test_write_json_with_seek() {
+    // Create a temporary directory for testing
+    let temp_dir = tempdir().expect("Failed to create temporary directory");
+
+    // Define the file path in the temporary directory
+    let file_path = temp_dir.path().join("output.json");
+
+    // Create a sample JSON value
+    let json_data = serde_json::json!({
+        "name": "John Doe",
+        "age": 30,
+        "city": "Example City"
+    });
+
+    // Test writing the JSON data to the file with seeking back
+    write_json(&file_path, &json_data).expect("Failed to write JSON to file");
+
+    // Verify that the file exists
+    assert!(file_path.exists());
+
+    // Verify the content of the file after seeking back
+    let mut file = File::open(&file_path).expect("Failed to open file");
+    let mut file_content = String::new();
+    file
+      .read_to_string(&mut file_content)
+      .expect("Failed to read file content");
+
+    let expected_content =
+      serde_json::to_string_pretty(&json_data).expect("Failed to serialize JSON");
+    assert_eq!(file_content, expected_content);
+
+    // Seek back to the beginning of the file
+    file
+      .seek(SeekFrom::Start(0))
+      .expect("Failed to seek back to the beginning");
+
+    // Verify the content of the file after seeking back
+    let mut file_content_after_seek = String::new();
+    file
+      .read_to_string(&mut file_content_after_seek)
+      .expect("Failed to read file content after seek");
+    assert_eq!(file_content_after_seek, expected_content);
+
+    // Cleanup
+    drop(file_path);
+    temp_dir.close().expect("Failed to close temp directory");
   }
 
   #[test]
