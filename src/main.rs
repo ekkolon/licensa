@@ -17,6 +17,7 @@
 mod cli;
 mod config;
 mod env;
+mod interpolation;
 mod license;
 mod logger;
 mod spdx;
