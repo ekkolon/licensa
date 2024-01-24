@@ -16,18 +16,19 @@
 
 mod cli;
 mod config;
+mod copyright_notice;
 mod env;
+mod interpolation;
+mod license;
 mod logger;
 mod spdx;
 mod store;
 mod utils;
 mod validator;
 
-use clap::{error::ErrorKind, CommandFactory, Parser};
+use clap::Parser;
 use cli::Commands;
 use mimalloc::MiMalloc;
-use spdx::license::SpdxLicenseStore;
-use store::LicenseRef;
 
 use crate::cli::Cli;
 
@@ -39,38 +40,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   // Configure logging
   logger::init();
 
-  // let item = spdx::license::find_license_item("mit");
-  // println!("LICENSE LIST ITEM: {:#?}", item);
-
-  let http_client = reqwest::Client::new();
-  // let license_store = LicenseStore::new(&http_client);
-  let license_store = SpdxLicenseStore::new(&http_client);
-
   let cli = Cli::parse();
 
   match &cli.command {
     Commands::Init(args) => {
-      // Fetch provided license from local or remote store.
-      let config = config::Config::parse()?;
-      println!("{:#?}", &config);
-      //
+      println!("{:?}", &args);
     }
 
     Commands::Apply(args) => {
-      // Fetch provided license from local or remote store.
-      let license_ref = LicenseRef::new(&args.license);
-      let license = license_store.fetch_license_details(&args.license).await;
-      if let Err(fetch_error) = license {
-        Cli::command()
-          .error(ErrorKind::Io, fetch_error.to_string())
-          .exit()
-      } else {
-        println!("{:#?} License details: {:#?}", &args.license, &license);
-        return Ok(());
-      };
+      println!("{:?}", &args);
     }
 
-    Commands::Verify(args) => {}
+    Commands::Verify(args) => {
+      println!("{:?}", &args);
+    }
   };
 
   Ok(())
