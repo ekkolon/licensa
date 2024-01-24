@@ -30,3 +30,19 @@ pub fn current_year() -> u16 {
     .unwrap()
     .year() as u16
 }
+#[cfg(test)]
+mod tests {
+  use super::*;
+  #[test]
+  fn test_current_year() {
+    // Test the current_year function
+    let current_year = current_year();
+
+    // Get the current year using chrono
+    let chrono_current_year = chrono::Utc::now().year() as u16;
+
+    // Ensure that the current year matches the one obtained from chrono
+    assert_eq!(current_year, chrono_current_year);
+  }
+
+}
