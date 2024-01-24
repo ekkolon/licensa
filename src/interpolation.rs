@@ -127,7 +127,7 @@ where
   F: Serialize,
 {
   let fields = extract_template_variables(template);
-  if fields.len() == 0 {
+  if fields.is_empty() {
     // No template variables to interpolate. Leave provided template untouched.
     return Ok(template.as_ref().to_string());
   }
@@ -157,7 +157,7 @@ where
 {
   // Find matching template variables in the provided template.
   let regex = Regex::new(TEMPLATE_VARIABLE_REGEX_PATTERN).unwrap();
-  let matches = regex.captures_iter(&template.as_ref());
+  let matches = regex.captures_iter(template.as_ref());
 
   let mut vars: Vec<&'a str> = vec![];
 
@@ -165,7 +165,7 @@ where
   for cap in matches {
     // Extract the variable name from the captured group
     if let Some(variable_name) = cap.get(1) {
-      vars.push(&variable_name.as_str())
+      vars.push(variable_name.as_str())
     }
   }
 
@@ -202,8 +202,8 @@ where
   result
 }
 
-pub fn resolve_interpolation_map<'a, T>(
-  fields: Vec<&'a str>,
+pub fn resolve_interpolation_map<T>(
+  fields: Vec<&str>,
   values: T,
 ) -> Result<Map<String, Value>>
 where
