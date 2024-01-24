@@ -62,4 +62,8 @@ pub enum Commands {
   /// A glob pattern can be used to run this command on matches recursively.
   #[command(name = "apply")]
   Apply(ApplyArgs),
+
+  /// Get a list of available licenses
+  #[command(name = "list")]
+  List,
 }
