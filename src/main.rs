@@ -16,6 +16,7 @@
 
 mod cli;
 mod config;
+mod copyright_notice;
 mod env;
 mod interpolation;
 mod license;
