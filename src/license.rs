@@ -5,13 +5,12 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tabled::{settings::Settings, Table, Tabled};
 
+use crate::utils::loadfile;
+
 // Static ref reference to license metadata json file.
 lazy_static! {
   static ref LICENSE_MANIFEST: LicensesManifest =
-    serde_json::from_slice::<LicensesManifest>(include_bytes!(
-      "../licenses/metadata.json"
-    ))
-    .unwrap();
+    loadfile!("../licenses/metadata.json");
 }
 
 /// Represents license metadata.
