@@ -85,6 +85,13 @@ where
   out_path
 }
 
+macro_rules! loadfile {
+  ($path: expr) => {
+    serde_json::from_slice(include_bytes!($path)).unwrap()
+  };
+}
+pub(crate) use loadfile;
+
 #[cfg(test)]
 mod tests {
   use super::*;
