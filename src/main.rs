@@ -11,6 +11,7 @@ mod interpolation;
 mod license;
 mod logger;
 mod scanner;
+mod source;
 mod spdx;
 mod store;
 mod utils;
