@@ -13,6 +13,20 @@ pub const COMPACT_COPYRIGHT_NOTICE: &str = r#"Copyright $(year) $(fullname)
 Use of this source code is governed by an $(license)-style license that can be
 found in the LICENSE file $(determiner) $(location)."#;
 
+/// Holds information for a simple SPDX copyright notice.
+#[derive(Debug, Deserialize, Serialize, Default)]
+pub struct SpdxCopyrightNotice {
+  /// The full name of the copyright holder.
+  pub fullname: String,
+
+  /// The type of license governing the use of the source code.
+  pub license: String,
+
+  /// The year(s) to be included in the copyright notice.
+  #[serde(default = "current_year")]
+  pub year: u16,
+}
+
 /// Holds information for a copyright notice.
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct CompactCopyrightNotice {
