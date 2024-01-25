@@ -151,7 +151,7 @@ where
 ///
 /// A vector of references to the variable names found in the template string.
 /// The references are valid for the lifetime `'a`.
-pub fn extract_template_variables<'a, T>(template: &'a T) -> Vec<&'a str>
+fn extract_template_variables<'a, T>(template: &'a T) -> Vec<&'a str>
 where
   T: AsRef<str> + 'a + ?Sized,
 {
@@ -184,7 +184,7 @@ where
 /// # Returns
 ///
 /// A new String with template variables replaced.
-pub fn replace_template_variables<'a, T>(
+fn replace_template_variables<'a, T>(
   template: &'a T,
   replacements: &Map<String, Value>,
 ) -> String
@@ -202,7 +202,7 @@ where
   result
 }
 
-pub fn resolve_interpolation_map<T>(
+fn resolve_interpolation_map<T>(
   fields: Vec<&str>,
   values: T,
 ) -> Result<Map<String, Value>>
