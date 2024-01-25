@@ -1,3 +1,6 @@
+// Copyright 2024 Nelson Dominguez
+// SPDX-License-Identifier: Apache-2.0
+
 /// Verify whether a license template exists in local Data directory
 /// for the given SPDX identifier.
 pub fn confirm_remote_fetch<T>(spdx_id: T) -> io::Result<String>
@@ -26,7 +29,9 @@ where
   }
 }
 
-pub async fn fetch_remote_template<T>(spdx_id: T) -> Result<(), Box<dyn std::error::Error>>
+pub async fn fetch_remote_template<T>(
+  spdx_id: T,
+) -> Result<(), Box<dyn std::error::Error>>
 where
   T: AsRef<str>,
 {
@@ -98,13 +103,15 @@ where
   let template_path = get_template_path(&spdx_id);
   // Create templates directory if it doesn't exist
   fs::create_dir_all(templates_dir())?;
-  fs::write(template_path.as_path(), contents.as_ref().as_bytes()).unwrap_or_else(|err| {
-    panic!(
-      "\nFailed to write License template for the {} license: {}",
-      &spdx_id.as_ref().to_string(),
-      err
-    )
-  });
+  fs::write(template_path.as_path(), contents.as_ref().as_bytes()).unwrap_or_else(
+    |err| {
+      panic!(
+        "\nFailed to write License template for the {} license: {}",
+        &spdx_id.as_ref().to_string(),
+        err
+      )
+    },
+  );
   println!(
     "\nSuccessfully saved \"{}\" license",
     &template_path.display()
