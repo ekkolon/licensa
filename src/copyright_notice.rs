@@ -1,4 +1,6 @@
+use crate::interpolation::{interpolate, Interpolate};
 use crate::utils::current_year;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Represents a simple SPDX copyright notice.
@@ -43,4 +45,8 @@ impl CompactCopyrightNotice {
   }
 }
 
+impl Interpolate for CompactCopyrightNotice {
+  fn interpolate(&self) -> Result<String> {
+    interpolate!(COMPACT_COPYRIGHT_NOTICE, &self)
+  }
 }
