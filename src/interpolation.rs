@@ -98,6 +98,35 @@ pub trait Interpolate {
 }
 
 /// Interpolates template variables in the provided template string using the given values.
+/// If the template has no variables, the original template string is returned unchanged.
+///
+/// # Arguments
+///
+/// * `template: &'a T` - The template string to interpolate variables in.
+/// * `values: F` - Values to use for interpolation. Must be a type implementing `Serialize`.
+///
+/// # Returns
+///
+/// A `Result` containing the interpolated string if successful, or an error if interpolation fails.
+///
+/// # Errors
+///
+/// This macro returns an error if there is an issue with serialization or if the template
+/// contains invalid variable placeholders.
+///
+/// # Panics
+///
+/// The `interpolate!` macro does not panic under normal circumstances. Panics may occur if the provided
+/// template is not a valid UTF-8 string.
+macro_rules! interpolate {
+  ($template:expr, $values:expr) => {{
+    $crate::interpolation::__private_interpolate_template(&$template, &$values)
+  }};
+}
+pub(crate) use interpolate;
+
+/// Interpolates template variables in the provided template string using the given values.
+/// If the template has no variables, the original template string is returned unchanged.
 ///
 /// # Arguments
 ///
@@ -112,16 +141,11 @@ pub trait Interpolate {
 ///
 /// This function returns an error if there is an issue with serialization or if the template
 /// contains invalid variable placeholders.
-///
-/// # Note
-///
-/// If the template has no variables to interpolate, the provided template is returned unchanged.
-///
-/// # Panics
-///
-/// This function does not panic under normal circumstances. Panics may occur if the provided
-/// template is not a valid UTF-8 string.
-pub fn interpolate_template<'a, T, F>(template: &'a T, values: F) -> Result<String>
+#[doc(hidden)]
+pub fn __private_interpolate_template<'a, T, F>(
+  template: &'a T,
+  values: F,
+) -> Result<String>
 where
   T: AsRef<str> + 'a + ?Sized,
   F: Serialize,
@@ -270,7 +294,7 @@ mod tests {
   fn test_interpolate_template() {
     // Test with no template variables
     let template = "Hello, World!";
-    let result = interpolate_template(template, json!({})).unwrap();
+    let result = __private_interpolate_template(template, json!({})).unwrap();
     assert_eq!(result, template);
 
     // Test with valid template variables
@@ -278,7 +302,7 @@ mod tests {
     let values = json!({
         "name": "Alice"
     });
-    let result = interpolate_template(template, values).unwrap();
+    let result = __private_interpolate_template(template, values).unwrap();
     assert_eq!(result, "Hello, Alice!");
 
     // Test with multiple template variables
@@ -287,12 +311,12 @@ mod tests {
         "greeting": "Hi",
         "name": "Alice"
     });
-    let result = interpolate_template(template, values).unwrap();
+    let result = __private_interpolate_template(template, values).unwrap();
     assert_eq!(result, "Hi, Alice!");
 
     // Test with escaped characters in the template
     let template = "Escape \\$\\(me\\)!";
-    let result = interpolate_template(template, json!({})).unwrap();
+    let result = __private_interpolate_template(template, json!({})).unwrap();
     assert_eq!(result, template);
 
     // Test with missing required key in values
@@ -300,7 +324,7 @@ mod tests {
     let values = json!({
         "name": "Bob"
     });
-    assert!(interpolate_template(template, values).is_err());
+    assert!(__private_interpolate_template(template, values).is_err());
 
     // Test with non-string or non-number field value in values
     let template = "$(name) is $(age) years old.";
@@ -308,7 +332,7 @@ mod tests {
         "name": "Alice",
         "age": true
     });
-    assert!(interpolate_template(template, values).is_err());
+    assert!(__private_interpolate_template(template, values).is_err());
   }
 
   #[test]
