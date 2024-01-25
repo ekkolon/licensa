@@ -1,3 +1,6 @@
+// Copyright 2024 Nelson Dominguez
+// SPDX-License-Identifier: Apache-2.0
+
 use crate::interpolation::{interpolate, Interpolate};
 use crate::utils::current_year;
 use anyhow::Result;
@@ -25,6 +28,12 @@ pub struct SpdxCopyrightNotice {
   /// The year(s) to be included in the copyright notice.
   #[serde(default = "current_year")]
   pub year: u16,
+}
+
+impl Interpolate for SpdxCopyrightNotice {
+  fn interpolate(&self) -> Result<String> {
+    interpolate!(SPDX_COPYRIGHT_NOTICE, &self)
+  }
 }
 
 /// Holds information for a copyright notice.
