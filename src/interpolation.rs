@@ -241,6 +241,7 @@ where
   Ok(interpolation_map)
 }
 
+#[inline]
 fn normalize_replacement_value<T>(value: T) -> String
 where
   T: Borrow<Value>,
@@ -251,6 +252,7 @@ where
   }
 }
 
+#[inline]
 fn is_interpolatable_value<T>(value: T) -> bool
 where
   T: Borrow<Value>,
