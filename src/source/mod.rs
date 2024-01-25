@@ -6,8 +6,6 @@ use std::path::Path;
 
 use anyhow::Result;
 
-mod header;
-
 fn prepend_license(path: &Path, tmpl: &str, data: LicenseData) -> Result<bool> {
   let lic = license_header(path, tmpl, &data)?;
   if lic.is_none() {
