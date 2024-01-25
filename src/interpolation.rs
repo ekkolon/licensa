@@ -94,7 +94,7 @@ use serde_json::{Map, Value};
 const TEMPLATE_VARIABLE_REGEX_PATTERN: &str = r"\$\((\w+)\)";
 
 pub trait Interpolate {
-  fn interpolate(&self) -> String;
+  fn interpolate(&self) -> Result<String>;
 }
 
 /// Interpolates template variables in the provided template string using the given values.
