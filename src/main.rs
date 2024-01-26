@@ -11,6 +11,7 @@ mod interpolation;
 mod license;
 mod logger;
 mod scanner;
+mod source;
 mod spdx;
 mod store;
 mod utils;
@@ -36,6 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   match &cli.command {
     Commands::Init(args) => {
       println!("{:?}", &args);
+      scanner::_examples::example_scan_op()?;
     }
 
     Commands::Apply(args) => {
