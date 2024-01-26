@@ -1,6 +1,6 @@
 use crossbeam_channel::Receiver;
 
-use crate::scanner::{FileEntry, Scan, ScanConfig};
+use super::scan::{FileEntry, Scan, ScanConfig};
 
 pub fn example_scan_op() -> anyhow::Result<()> {
   let root = std::env::current_dir()?;
