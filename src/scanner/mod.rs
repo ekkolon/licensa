@@ -246,7 +246,7 @@ mod tests {
     let root_path = temp_dir.path();
 
     let license_file_path = root_path.join("LICENSE");
-    File::create(&license_file_path).expect("Failed to create license file");
+    File::create(license_file_path).expect("Failed to create license file");
 
     let ignored_file_path = root_path.join("ignored.txt");
     File::create(&ignored_file_path).expect("Failed to create ignored file");
@@ -254,12 +254,19 @@ mod tests {
     let licensaignore_path = root_path.join(LICENSA_IGNORE_FILE);
     let mut licensaignore_file =
       File::create(&licensaignore_path).expect("Failed to create .licensaignore file");
+
     licensaignore_file
       .write_all(b"ignored.txt")
       .expect("Failed to write to .licensaignore file");
 
     // Run the scan function
-    let result = scan(root_path);
+    let scan_config = ScanConfig {
+      limit: 100,
+      exclude: None,
+      root: root_path.to_path_buf(),
+    };
+    let scan = Scan::new(scan_config);
+    let result = scan.run(); //.expect("Failed to execute scan");
 
     // Assert that the result is Ok and contains the license file
     assert!(result.is_ok());
@@ -278,7 +285,13 @@ mod tests {
     let root_path = temp_dir.path();
 
     // Run the scan function
-    let result = scan(root_path);
+    let scan_config = ScanConfig {
+      limit: 100,
+      exclude: None,
+      root: root_path.to_path_buf(),
+    };
+    let scan = Scan::new(scan_config);
+    let result = scan.run();
 
     // Assert that the result is Ok and the candidates list is empty
     assert!(result.is_ok());
