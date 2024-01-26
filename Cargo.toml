@@ -34,6 +34,7 @@ derive_more = { version = "0.99.17", features = ["display"] }
 regex = "1.10.3"
 tabled = "0.15.0"
 ignore = "0.4.22"
+crossbeam-channel = "0.5.11"
 
 [badges]
 maintenance = { status = "experimental" }
