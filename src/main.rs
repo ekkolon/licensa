@@ -3,6 +3,7 @@
 
 #![allow(dead_code, unused_variables)]
 
+mod cache;
 mod cli;
 mod config;
 mod copyright_notice;
