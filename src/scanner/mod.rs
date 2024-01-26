@@ -16,15 +16,23 @@ use std::path::PathBuf;
 
 use self::source::SourceHeaders;
 
+/// Default filename for the `Licensa` CLI ignore patterns.
 const LICENSA_IGNORE_FILE: &str = ".licensaignore";
 
+/// Configuration for a scan operation.
 #[derive(Debug, Clone)]
 pub struct ScanConfig {
+  /// Root directory to start scanning from.
   pub root: PathBuf,
+
+  /// Optional list of paths to exclude from the scan.
   pub exclude: Option<Vec<PathBuf>>,
+
+  /// Limit on the number of parallel scan operations.
   pub limit: usize,
 }
 
+/// Represents a scanning operation.
 #[derive(Debug)]
 pub struct Scan {
   config: ScanConfig,
@@ -32,6 +40,7 @@ pub struct Scan {
 }
 
 impl Scan {
+  /// Creates a new [Scan] instance of with the given configuration.
   pub fn new(config: ScanConfig) -> Self {
     let walker = build_walker(&config).expect("Failed to build scan walker");
 
@@ -65,6 +74,39 @@ impl Scan {
     Ok(candidates)
   }
 
+  /// Runs the scan in parallel and returns a receiver for receiving file entries.
+  ///
+  /// This function utilizes crossbeam channels for parallel scanning.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error if there are issues with building or running the parallel walker.
+  ///
+  /// # Examples
+  ///
+  /// ```no_run
+  /// use licensa::scanner:ScanConfig;
+  ///
+  /// // Create a ScanConfig with the necessary parameters
+  /// let config = ScanConfig {
+  ///     // ... (initialize your config)
+  /// };
+  ///
+  /// // Create a Scan instance with the provided config
+  /// let scan = licensa::scanner::Scan::new(config);
+  ///
+  /// // Run the scan in parallel and obtain the receiver
+  /// if let Ok(receiver) = scan.run_parallel() {
+  ///     // Iterate over received file entries
+  ///     for entry in receiver.iter() {
+  ///         // Process the file entry as needed
+  ///         println!("Received file entry: {:?}", entry);
+  ///     }
+  /// } else {
+  ///     // Handle the error case
+  ///     eprintln!("Error occurred while running the scan in parallel");
+  /// }
+  /// ```
   pub fn run_parallel(&self) -> Result<Receiver<FileEntry>> {
     let (tx, rx) = crossbeam_channel::bounded::<FileEntry>(self.config.limit);
 
@@ -91,33 +133,44 @@ impl Scan {
     Ok(rx)
   }
 
+  /// Returns the root path configured for the scan.
   pub fn root(&self) -> PathBuf {
     self.config.root.to_owned()
   }
 
+  /// Returns the optional list of `.gitignore` files configured for the scan.
   pub fn gitignore_files(&self) -> Option<Vec<PathBuf>> {
     self.config.exclude.to_owned()
   }
 
+  /// Returns the limit configured for the number of parallel scan processes.
   pub fn limit(&self) -> usize {
     self.config.limit.to_owned()
   }
 }
 
+/// Represents a file entry captured during the scan.
 #[derive(Debug, Serialize)]
 pub struct FileEntry {
+  /// Absolute path to the file.
   pub abspath: PathBuf,
+
+  /// Optional file extension.
   pub extension: Option<String>,
+
+  /// Filename of the file.
   pub filename: String,
 }
 
 impl From<DirEntry> for FileEntry {
+  /// Converts a `DirEntry` into a `FileEntry`.
   fn from(value: DirEntry) -> Self {
     FileEntry::from(&value)
   }
 }
 
 impl From<&DirEntry> for FileEntry {
+  /// Converts a reference to a `DirEntry` into a `FileEntry`.
   fn from(value: &DirEntry) -> Self {
     FileEntry {
       filename: value.file_name().to_string_lossy().into_owned(),
@@ -130,16 +183,7 @@ impl From<&DirEntry> for FileEntry {
   }
 }
 
-/// Checks whether a directory entry is a license candidate, considering Gitignore rules.
-///
-/// # Arguments
-///
-/// * `gitignore` - A Gitignore instance specifying files to be ignored.
-/// * `entry` - A directory entry to check.
-///
-/// # Returns
-///
-/// `true` if the entry is a license candidate, `false` otherwise.
+/// Checks if a directory entry is a candidate for applying a license.
 fn is_candidate<E>(entry: E) -> bool
 where
   E: Borrow<DirEntry>,
@@ -218,9 +262,8 @@ fn build_walker(config: &ScanConfig) -> Result<WalkBuilder> {
     }
   }
 
-  // Add `.licensaignore` file
-  // This must come last because the patterns defined in this
-  // file should take precedence over other ignore files.
+  // Add `.licensaignore` file. This must come last because the patterns
+  // defined in this file should take precedence over other ignore files.
   let licensaignore = &config.root.join(LICENSA_IGNORE_FILE);
   walker.add_custom_ignore_filename(licensaignore);
 
