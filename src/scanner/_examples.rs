@@ -1,13 +1,25 @@
+use crossbeam_channel::Receiver;
+
+use crate::scanner::{FileEntry, Scan, ScanConfig};
+
 pub fn example_scan_op() -> anyhow::Result<()> {
   let root = std::env::current_dir()?;
-  let candidates = super::scan(root)?;
+  let scan_config = ScanConfig {
+    limit: 100,
+    exclude: None,
+    root,
+  };
+  let scan = Scan::new(scan_config);
+  let result = scan.run();
+
+  let candidates = scan.run()?;
   if candidates.is_empty() {
     return Ok(());
   }
 
   let first_candidate = &candidates[2];
   let dotext = &first_candidate
-    .ext
+    .extension
     .clone()
     .map(|e| format!(".{}", &e).to_string());
 
@@ -30,13 +42,28 @@ pub fn example_scan_op() -> anyhow::Result<()> {
       let file_content =
         std::fs::read_to_string("./src/main.rs").expect("Failed to read file");
 
-      if super::header_checker::contains_copyright_notice(&file_content) {
-        println!("File {} has a license header.", "./example.js");
+      if super::header_checker::contains_copyright_notice(file_content) {
+        println!("File ./example.js has a license header.");
       } else {
-        println!("File {} does not contain license header.", "./example.js");
+        println!("File ./example.js does not contain license header.");
       }
     }
   }
 
   Ok(())
+}
+
+pub fn example_scan_parallel() -> anyhow::Result<Receiver<FileEntry>> {
+  let root = std::env::current_dir()?;
+
+  let scan_config = ScanConfig {
+    limit: 100,
+    exclude: None,
+    root,
+  };
+
+  let scan = Scan::new(scan_config);
+  let result = scan.run_parallel()?;
+
+  Ok(result)
 }
