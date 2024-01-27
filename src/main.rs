@@ -17,6 +17,7 @@ mod spdx;
 mod store;
 mod utils;
 mod validator;
+mod workspace;
 
 use clap::Parser;
 use cli::Commands;
@@ -38,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match &cli.command {
         Commands::Init(args) => {
             println!("{:?}", &args);
-            scanner::_examples::example_scan_op()?;
+            scanner::_examples::example_scan_parallel()?;
         }
 
         Commands::Apply(args) => {

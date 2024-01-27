@@ -1,6 +1,10 @@
-use crossbeam_channel::Receiver;
+use std::path::PathBuf;
 
-use super::scan::{FileEntry, Scan, ScanConfig};
+use crate::workspace;
+
+use rayon::prelude::*;
+
+use super::scan::{Scan, ScanConfig};
 
 pub fn example_scan_op() -> anyhow::Result<()> {
     let root = std::env::current_dir()?;
@@ -53,7 +57,12 @@ pub fn example_scan_op() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn example_scan_parallel() -> anyhow::Result<Receiver<FileEntry>> {
+#[derive(Debug, Clone)]
+struct ScanContext {
+    pub count: u16,
+}
+
+pub fn example_scan_parallel() -> anyhow::Result<()> {
     let root = std::env::current_dir()?;
 
     let scan_config = ScanConfig {
@@ -65,5 +74,23 @@ pub fn example_scan_parallel() -> anyhow::Result<Receiver<FileEntry>> {
     let scan = Scan::new(scan_config);
     let result = scan.run_parallel()?;
 
-    Ok(result)
+    let mut count = 0;
+
+    let read_entry = |context: &mut ScanContext, _file_contents: &str| {
+        println!("READ: {}", _file_contents.len());
+    };
+
+    let mut file_tree = workspace::FileTree::new();
+
+    let paths = result
+        .into_iter()
+        .map(|entry| entry.abspath)
+        .collect::<Vec<PathBuf>>();
+
+    println!("NUM TASKS: {:?}", paths.len());
+
+    file_tree.add_task(ScanContext { count: 0 }, read_entry);
+    file_tree.run_with_paths(paths);
+
+    Ok(())
 }

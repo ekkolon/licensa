@@ -5,7 +5,7 @@ use anyhow::Result;
 use crossbeam_channel::Receiver;
 
 use ignore::{DirEntry, WalkBuilder, WalkState};
-use serde::Serialize;
+
 use std::borrow::Borrow;
 
 use std::path::PathBuf;
@@ -146,7 +146,7 @@ impl Scan {
 }
 
 /// Represents a file entry captured during the scan.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone)]
 pub struct FileEntry {
     /// Absolute path to the file.
     pub abspath: PathBuf,
@@ -157,6 +157,8 @@ pub struct FileEntry {
     /// Filename of the file.
     pub filename: String,
 }
+
+unsafe impl Sync for FileEntry {}
 
 impl From<DirEntry> for FileEntry {
     /// Converts a `DirEntry` into a `FileEntry`.
