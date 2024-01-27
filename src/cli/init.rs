@@ -8,16 +8,16 @@ use clap::Args;
 
 #[derive(Args, Debug)]
 pub struct InitArgs {
-  /// License type as SPDX id.
-  #[arg(short, long)]
-  pub license: Option<String>,
+    /// License type as SPDX id.
+    #[arg(short, long)]
+    pub license: Option<String>,
 
-  /// The copyright owner.
-  #[arg(short, long)]
-  pub author: Option<String>,
+    /// The copyright owner.
+    #[arg(short, long)]
+    pub author: Option<String>,
 
-  /// The copyright year.
-  #[arg(short, long, value_parser = validator::acceptable_year)]
-  #[arg(default_value_t = utils::current_year())]
-  pub year: u16,
+    /// The copyright year.
+    #[arg(short, long, value_parser = validator::acceptable_year)]
+    #[arg(default_value_t = utils::current_year())]
+    pub year: u16,
 }

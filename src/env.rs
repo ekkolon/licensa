@@ -12,20 +12,19 @@ const LOCALE_TEMPLATES_DIR_NAME: &str = "templates";
 // TODO: Add test
 #[inline]
 pub fn templates_dir() -> PathBuf {
-  data_dir().join(LOCALE_TEMPLATES_DIR_NAME)
+    data_dir().join(LOCALE_TEMPLATES_DIR_NAME)
 }
 
 // TODO: Add docs
 // TODO: Add test
 #[inline]
 pub fn data_dir() -> PathBuf {
-  project_dirs().data_dir().to_path_buf()
+    project_dirs().data_dir().to_path_buf()
 }
 
 // TODO: Add docs
 // TODO: Add test
 #[inline]
 fn project_dirs() -> ProjectDirs {
-  ProjectDirs::from("", "", PROJECT_NAME)
-    .expect("Failed to determine app data directory")
+    ProjectDirs::from("", "", PROJECT_NAME).expect("Failed to determine app data directory")
 }
