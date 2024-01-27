@@ -5,7 +5,7 @@ use clap::Args;
 
 #[derive(Args, Debug)]
 pub struct VerifyArgs {
-  //   lists test values
-  //   #[arg(short, long)]
-  //   list: bool,
+    //   lists test values
+    //   #[arg(short, long)]
+    //   list: bool,
 }

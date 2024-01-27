@@ -18,41 +18,41 @@ use self::{apply::ApplyArgs, init::InitArgs, verify::VerifyArgs};
 #[command(propagate_version = true)]
 #[command(next_line_help = true)]
 pub struct Cli {
-  /// Optional name to operate on
-  // pub name: Option<String>,
+    /// Optional name to operate on
+    // pub name: Option<String>,
 
-  /// Use options from a custom config file
-  #[arg(short, long, value_name = "FILE")]
-  pub config: Option<PathBuf>,
+    /// Use options from a custom config file
+    #[arg(short, long, value_name = "FILE")]
+    pub config: Option<PathBuf>,
 
-  #[arg(short, long, default_value_t = false)]
-  pub verbose: bool,
+    #[arg(short, long, default_value_t = false)]
+    pub verbose: bool,
 
-  #[command(subcommand)]
-  pub command: Commands,
+    #[command(subcommand)]
+    pub command: Commands,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-  /// Verify presence of license headers in one or more files.
-  ///
-  /// A glob pattern may be used to verify multiple files that recursively.
-  #[command(name = "init")]
-  Init(InitArgs),
+    /// Verify presence of license headers in one or more files.
+    ///
+    /// A glob pattern may be used to verify multiple files that recursively.
+    #[command(name = "init")]
+    Init(InitArgs),
 
-  /// Verify presence of license headers in one or more files.
-  ///
-  /// A glob pattern may be used to verify multiple files that recursively.
-  #[command(name = "verify")]
-  Verify(VerifyArgs),
+    /// Verify presence of license headers in one or more files.
+    ///
+    /// A glob pattern may be used to verify multiple files that recursively.
+    #[command(name = "verify")]
+    Verify(VerifyArgs),
 
-  /// Apply license header to one or more files.
-  ///
-  /// A glob pattern can be used to run this command on matches recursively.
-  #[command(name = "apply")]
-  Apply(ApplyArgs),
+    /// Apply license header to one or more files.
+    ///
+    /// A glob pattern can be used to run this command on matches recursively.
+    #[command(name = "apply")]
+    Apply(ApplyArgs),
 
-  /// Get a list of available licenses
-  #[command(name = "list")]
-  List,
+    /// Get a list of available licenses
+    #[command(name = "list")]
+    List,
 }
