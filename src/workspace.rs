@@ -46,12 +46,7 @@
 
 use crossbeam_channel::{Receiver, Sender};
 use rayon::prelude::*;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-    *,
-};
+use std::{fs, path::PathBuf, sync::Arc};
 
 /// Macro for defining trait aliases with optional type parameters and where clauses.
 macro_rules! trait_aliases {(
@@ -93,6 +88,11 @@ macro_rules! trait_aliases {(
     )*
 )}
 
+pub struct FileTaskResponse {
+    pub content: String,
+    pub path: PathBuf,
+}
+
 /// A trait representing a generic file processor.
 ///
 /// Implementors of this trait should provide the logic for processing file contents.
@@ -132,7 +132,7 @@ pub trait FileTask: FileTaskClone + Send {
     /// # Arguments
     ///
     /// * `file_contents` - A string slice representing the contents of the file.
-    fn execute(&mut self, file_contents: &str);
+    fn execute(&mut self, response: &FileTaskResponse);
 }
 
 /// A trait providing the ability to clone a `FileTask`.
@@ -167,7 +167,7 @@ trait_aliases! {
 
     pub trait alias Function(Context, Output) = {
         Send + Sync + 'static +
-        Fn(&mut Context, &str) -> Output
+        Fn(&mut Context, &FileTaskResponse) -> Output
     } where {
         Context : Contextual,
         Output : Send + 'static,
@@ -215,13 +215,12 @@ where
     Context: Contextual,
     Output: Send + 'static,
 {
-    fn execute(&mut self, file_contents: &str) {
+    fn execute(&mut self, response: &FileTaskResponse) {
         if self.completed {
-            println!("Task completed");
             return;
         }
 
-        let result = (*self.function)(&mut self.context, file_contents);
+        let result = (*self.function)(&mut self.context, response);
         let completed = self.results.send(result).is_err();
 
         self.completed = completed;
@@ -253,7 +252,6 @@ where
 /// to run file processing on multiple paths concurrently.
 pub struct FileTree {
     tasks: Vec<Box<dyn FileTask>>,
-    paths: Vec<PathBuf>,
 }
 
 impl FileTree {
@@ -284,61 +282,18 @@ impl FileTree {
         receiver
     }
 
-    /// Adds a file processor to the work tree processor.
-    ///
-    /// # Arguments
-    ///
-    /// * `context` - The context for file processing.
-    /// * `function` - The function used to process file contents.
-    ///
-    /// # Outputurns
-    ///
-    /// A receiver for receiving results from the file processor.
-    pub fn add_task_for_path<P, Context, Output, F>(
-        &mut self,
-        path: P,
-        context: Context,
-        function: F,
-    ) -> Receiver<Output>
-    where
-        P: AsRef<Path>,
-        Context: Contextual,
-        Output: Send + 'static,
-        F: Function<Context, Output>,
-    {
-        self.paths.push(path.as_ref().into());
-        self.add_task(context, function)
-    }
-
-    pub fn run(&self) {
-        self.__private_run(self.paths.clone())
-    }
-
     /// Runs file processing on the provided work tree paths.
     ///
     /// # Arguments
     ///
     /// * `tree_paths` - A vector of `PathBuf` representing the work tree paths.
-    pub fn run_with_paths(&self, tree_paths: Vec<PathBuf>) {
-        self.__private_run(tree_paths)
-    }
-
-    pub fn new() -> Self {
-        Self {
-            tasks: vec![],
-            paths: vec![],
-        }
-    }
-
-    /// Runs file processing on the provided work tree paths.
-    ///
-    /// # Arguments
-    ///
-    /// * `tree_paths` - A vector of `PathBuf` representing the work tree paths.
-    fn __private_run(&self, tree_paths: Vec<PathBuf>) {
+    pub fn run(&self, tree_paths: Vec<PathBuf>) {
         let initial_tasks = self.tasks.clone();
 
-        let read_file = |path: PathBuf| fs::read_to_string(path).ok();
+        let read_file = |path: PathBuf| {
+            let content = fs::read_to_string(&path).ok();
+            content.map(move |c| FileTaskResponse { content: c, path })
+        };
 
         tree_paths
             .into_par_iter()
@@ -348,6 +303,10 @@ impl FileTree {
                     .iter_mut()
                     .for_each(|task| task.execute(file_contents))
             });
+    }
+
+    pub fn new() -> Self {
+        Self { tasks: vec![] }
     }
 }
 
@@ -364,7 +323,7 @@ mod tests {
     struct MockContext;
 
     // Mock function
-    fn mock_function(_context: &mut MockContext, _file_contents: &str) -> i32 {
+    fn mock_function(_context: &mut MockContext, _file_contents: &FileTaskResponse) -> i32 {
         // Mock processing logic
         42
     }
@@ -384,18 +343,17 @@ mod tests {
         struct MockFileTask;
 
         impl FileTask for MockFileTask {
-            fn execute(&mut self, _file_contents: &str) {
+            fn execute(&mut self, _file_contents: &FileTaskResponse) {
                 // Mock processing logic
             }
         }
 
         let processor = FileTree {
             tasks: vec![Box::new(MockFileTask)],
-            paths: vec![],
         };
 
         // Run with an empty work tree path vector
-        processor.run_with_paths(vec![]);
+        processor.run(vec![]);
     }
 
     #[test]
@@ -410,8 +368,12 @@ mod tests {
 
         let mut cloned_processor = function_processor.clone();
 
+        let response = &FileTaskResponse {
+            content: "example test content".into(),
+            path: PathBuf::new(),
+        };
         // Process file contents with the cloned processor
-        cloned_processor.execute("example test content");
+        cloned_processor.execute(response);
         assert!(!cloned_processor.completed);
 
         // Check if the sender sends a result
@@ -420,17 +382,14 @@ mod tests {
 
     #[test]
     fn test_work_tree_processor() {
-        let mut work_tree_processor = FileTree {
-            tasks: vec![],
-            paths: vec![],
-        };
+        let mut work_tree_processor = FileTree { tasks: vec![] };
 
         let receiver = work_tree_processor.add_task(MockContext, mock_function);
 
         let (tmp_dir, tmp_file) = create_temp_file("work_tree_processor.txt");
 
         // Run with an empty work tree path vector
-        work_tree_processor.run_with_paths(vec![tmp_file]);
+        work_tree_processor.run(vec![tmp_file]);
 
         // Check if the receiver receives the result
         assert_eq!(

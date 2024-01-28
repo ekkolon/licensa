@@ -1,6 +1,10 @@
 use std::path::PathBuf;
 
-use crate::workspace;
+use crate::{
+    helpers::channel_duration::ChannelDuration,
+    scanner::header_checker::contains_copyright_notice,
+    workspace::{self, FileTaskResponse},
+};
 
 use rayon::prelude::*;
 
@@ -71,26 +75,43 @@ pub fn example_scan_parallel() -> anyhow::Result<()> {
         root,
     };
 
+    let mut channel_duration = ChannelDuration::new();
     let scan = Scan::new(scan_config);
-    let result = scan.run_parallel()?;
+    // let result = scan.run_parallel();
 
-    let mut count = 0;
+    let mut worktree = workspace::FileTree::new();
+    worktree.add_task(ScanContext { count: 0 }, read_entry);
 
-    let read_entry = |context: &mut ScanContext, _file_contents: &str| {
-        println!("READ: {}", _file_contents.len());
-    };
-
-    let mut file_tree = workspace::FileTree::new();
-
-    let paths = result
+    let candidates: Vec<PathBuf> = scan
+        .run_parallel()
         .into_iter()
+        .par_bridge()
         .map(|entry| entry.abspath)
-        .collect::<Vec<PathBuf>>();
+        .collect();
 
-    println!("NUM TASKS: {:?}", paths.len());
+    let num_files = candidates.len();
 
-    file_tree.add_task(ScanContext { count: 0 }, read_entry);
-    file_tree.run_with_paths(paths);
+    worktree.run(candidates);
+
+    channel_duration.drop_channel();
+
+    println!(
+        "Took {} for {:?} files",
+        channel_duration.get_duration().as_secs_f32(),
+        num_files
+    );
 
     Ok(())
+}
+
+fn read_entry<C>(context: &mut C, response: &FileTaskResponse)
+where
+    C: Clone,
+{
+    let has_license = contains_copyright_notice(&response.content);
+    println!(
+        "Licensed: {}; READ: {:?}",
+        has_license,
+        response.path.file_name().unwrap()
+    );
 }
