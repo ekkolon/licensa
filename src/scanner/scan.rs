@@ -162,8 +162,6 @@ pub struct FileEntry {
     pub filename: String,
 }
 
-unsafe impl Sync for FileEntry {}
-
 impl From<DirEntry> for FileEntry {
     /// Converts a `DirEntry` into a `FileEntry`.
     fn from(value: DirEntry) -> Self {
@@ -255,7 +253,7 @@ fn build_walker(config: &ScanConfig) -> Result<WalkBuilder> {
 }
 
 #[inline]
-fn get_path_suffix<P>(path: P) -> String
+pub fn get_path_suffix<P>(path: P) -> String
 where
     P: AsRef<Path>,
 {
