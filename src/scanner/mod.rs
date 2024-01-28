@@ -5,3 +5,4 @@ pub mod _examples;
 pub mod header_checker;
 pub mod scan;
 pub mod source;
+mod stats;
