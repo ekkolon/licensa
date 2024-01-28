@@ -46,10 +46,10 @@ debug = 0
 
 [profile.release]
 lto = true
-opt-level = "s"
+opt-level = "z"
 codegen-units = 1
 panic = "abort"
-strip = "debuginfo"
+strip = true
 
 [dev-dependencies]
 tempfile = "3.9.0"
