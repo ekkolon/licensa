@@ -3,12 +3,13 @@
 
 use anyhow::Result;
 use crossbeam_channel::Receiver;
+use rayon::prelude::*;
 
 use ignore::{DirEntry, WalkBuilder, WalkState};
 
 use std::borrow::Borrow;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::source::SourceHeaders;
 
@@ -65,7 +66,7 @@ impl Scan {
             .collect();
 
         // At this point, all entries are files
-        let candidates = entries.iter().map(FileEntry::from).collect();
+        let candidates = entries.par_iter().map(FileEntry::from).collect();
 
         Ok(candidates)
     }
@@ -103,7 +104,7 @@ impl Scan {
     ///     eprintln!("Error occurred while running the scan in parallel");
     /// }
     /// ```
-    pub fn run_parallel(&self) -> Result<Receiver<FileEntry>> {
+    pub fn run_parallel(&self) -> Receiver<FileEntry> {
         let (tx, rx) = crossbeam_channel::bounded::<FileEntry>(self.config.limit);
 
         // Start the scan in parallel
@@ -126,20 +127,23 @@ impl Scan {
             })
         });
 
-        Ok(rx)
+        rx
     }
 
     /// Returns the root path configured for the scan.
+    #[inline]
     pub fn root(&self) -> PathBuf {
         self.config.root.to_owned()
     }
 
     /// Returns the optional list of `.gitignore` files configured for the scan.
+    #[inline]
     pub fn gitignore_files(&self) -> Option<Vec<PathBuf>> {
         self.config.exclude.to_owned()
     }
 
     /// Returns the limit configured for the number of parallel scan processes.
+    #[inline]
     pub fn limit(&self) -> usize {
         self.config.limit.to_owned()
     }
@@ -186,38 +190,20 @@ fn is_candidate<E>(entry: E) -> bool
 where
     E: Borrow<DirEntry>,
 {
-    let entry = entry.borrow() as &DirEntry;
+    let entry = &entry.borrow() as &DirEntry;
 
     // Only consider entry if it is a regular file
-    let ftype = entry.file_type();
-    let is_file = ftype.map_or(false, |ftype| ftype.is_file());
-    if !is_file {
+    if !entry.file_type().map_or(false, |ftype| ftype.is_file()) {
         return false;
     }
 
-    // Verify the file extension is eligable
-    let f_path = entry.path();
-    let f_ext = f_path.extension();
-    let f_name = f_path.file_name();
-
-    if f_ext.is_none() && f_name.is_none() {
+    let path = entry.path();
+    if path.file_name().is_none() && path.extension().is_none() {
         return false;
     }
 
-    if let Some(ext) = f_ext {
-        let ext = ext.to_str().unwrap();
-        let ext = format!(".{ext}");
-        let header_def = SourceHeaders::find_header_definition_by_extension(ext);
-        return header_def.is_some();
-    }
-
-    if let Some(name) = f_name {
-        let name = name.to_str().unwrap();
-        let header_def = SourceHeaders::find_header_definition_by_extension(name);
-        return header_def.is_some();
-    }
-
-    true
+    let lookup_name = get_path_suffix(path);
+    SourceHeaders::find_header_definition_by_extension(&lookup_name).is_some()
 }
 
 /// Builds a WalkBuilder with the specified configuration.
@@ -266,6 +252,27 @@ fn build_walker(config: &ScanConfig) -> Result<WalkBuilder> {
     walker.add_custom_ignore_filename(licensaignore);
 
     Ok(walker.to_owned())
+}
+
+#[inline]
+fn get_path_suffix<P>(path: P) -> String
+where
+    P: AsRef<Path>,
+{
+    path.as_ref().extension().map_or_else(
+        || {
+            path.as_ref()
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map_or(String::new(), |s| s.to_owned())
+        },
+        |extension| {
+            let mut lookup_name = String::with_capacity(extension.len() + 1);
+            lookup_name.push('.');
+            lookup_name.push_str(extension.to_str().unwrap_or_default());
+            lookup_name
+        },
+    )
 }
 
 #[cfg(test)]
