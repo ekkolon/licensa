@@ -3,5 +3,5 @@
 
 pub mod _examples;
 pub mod scan;
-mod stats;
-mod work_tree;
+pub mod stats;
+pub mod work_tree;

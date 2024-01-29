@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Verify(args) => {
-            println!("{:?}", &args);
+            cli::verify::build(args)?;
         }
 
         Commands::List => {
