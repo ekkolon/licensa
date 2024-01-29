@@ -47,10 +47,10 @@ where
     T: Clone + Cachable,
 {
     /// Creates a new instance of `Cache`.
-    pub fn new() -> Self {
-        Cache {
+    pub fn new() -> Arc<Self> {
+        Arc::new(Cache {
             inner: Arc::new(Mutex::new(HashMap::new())),
-        }
+        })
     }
 
     /// Adds or updates the cache with the provided item.
@@ -97,7 +97,7 @@ where
         cache.get(id).cloned()
     }
 
-    fn value(&mut self, item: T) -> Arc<T> {
+    pub fn value(&mut self, item: T) -> Arc<T> {
         let mut cache = self.inner.lock().unwrap();
         let entry = cache.entry(item.cache_id());
         entry.or_insert_with(|| item.into()).to_owned()
