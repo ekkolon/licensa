@@ -236,6 +236,8 @@ impl<'a> HeaderPrefix<'a> {
             out.push('\n');
         }
 
+        out.push('\n');
+
         Ok(out)
     }
 
