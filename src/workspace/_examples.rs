@@ -1,71 +1,36 @@
 use std::{
-    path::{Path, PathBuf},
+    fs,
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
 use crate::{
     cache::{Cachable, Cache},
+    copyright_notice::{
+        contains_copyright_notice, CompactCopyrightNotice, COMPACT_COPYRIGHT_NOTICE,
+    },
+    header::{extract_hash_bang, SourceHeaders},
     helpers::channel_duration::ChannelDuration,
-    scanner::{header_checker::contains_copyright_notice, scan::get_path_suffix},
-    workspace::{self, FileTaskResponse},
+    interpolation::interpolate,
 };
 
+use anyhow::Result;
 use rayon::prelude::*;
+use serde::Serialize;
 
 use super::{
-    scan::{Scan, ScanConfig},
+    scan::{get_path_suffix, Scan, ScanConfig},
     stats::ScanStats,
+    work_tree::FileTaskResponse,
 };
 
-pub fn example_scan_op() -> anyhow::Result<()> {
-    let root = std::env::current_dir()?;
-    let scan_config = ScanConfig {
-        limit: 100,
-        exclude: None,
-        root,
-    };
-    let scan = Scan::new(scan_config);
-    let result = scan.run();
-
-    let candidates = scan.run()?;
-    if candidates.is_empty() {
-        return Ok(());
-    }
-
-    let first_candidate = &candidates[2];
-    let dotext = &first_candidate
-        .extension
-        .clone()
-        .map(|e| format!(".{}", &e).to_string());
-
-    println!("Extension {}", &dotext.as_ref().unwrap());
-
-    if dotext.is_some() {
-        println!("Extension {}", &dotext.as_ref().unwrap());
-        let prefix = super::source::SourceHeaders::find_header_prefix_for_extension(
-            dotext.as_ref().unwrap(),
-        );
-        if prefix.is_some() {
-            let p = prefix.as_ref().unwrap().to_owned();
-
-            println!(
-                "Prefix for extension {}: {:?}",
-                &dotext.as_ref().unwrap(),
-                &prefix.as_ref().unwrap()
-            );
-
-            let file_content =
-                std::fs::read_to_string("./src/main.rs").expect("Failed to read file");
-
-            if super::header_checker::contains_copyright_notice(file_content) {
-                println!("File ./example.js has a license header.");
-            } else {
-                println!("File ./example.js does not contain license header.");
-            }
-        }
-    }
-
-    Ok(())
+#[derive(Clone)]
+struct LicenseTemplate<P>
+where
+    P: Serialize + 'static + ?Sized,
+{
+    content: String,
+    data: P,
 }
 
 #[derive(Clone)]
@@ -73,6 +38,7 @@ struct ScanContext {
     pub root: PathBuf,
     pub stats: Arc<Mutex<ScanStats>>,
     pub cache: Arc<Cache<LicenseHeaderTemplate>>,
+    pub template: Arc<Mutex<String>>,
 }
 
 pub fn example_scan_parallel() -> anyhow::Result<()> {
@@ -94,7 +60,7 @@ pub fn example_scan_parallel() -> anyhow::Result<()> {
     let scan = Scan::new(scan_config);
 
     let candidates: Vec<PathBuf> = scan
-        .run_parallel()
+        .run()
         .into_iter()
         .par_bridge()
         .map(|entry| entry.abspath)
@@ -111,13 +77,28 @@ pub fn example_scan_parallel() -> anyhow::Result<()> {
     let cache = Cache::<LicenseHeaderTemplate>::new();
     let stats = Arc::new(Mutex::new(ScanStats::new()));
 
+    let template = interpolate!(
+        COMPACT_COPYRIGHT_NOTICE,
+        CompactCopyrightNotice {
+            year: 2024,
+            fullname: "John Doe".into(),
+            license: "Apache-2.0".into(),
+            determiner: "in".into(),
+            location: "the root of this project".into(),
+        }
+    )?;
+
+    let template = Arc::new(Mutex::new(template));
+
     let context = ScanContext {
         root,
         cache: cache.clone(),
         stats: stats.clone(),
+        template,
     };
 
-    let mut worktree = workspace::FileTree::new();
+    let mut worktree = super::work_tree::WorkTree::new();
+
     let rt = worktree.add_task(context, read_entry);
 
     worktree.run(candidates);
@@ -140,14 +121,38 @@ pub fn example_scan_parallel() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) {
+fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
     if contains_copyright_notice(&response.content) {
         // Skip further processing the file if it already contains a copyright notice
         context.stats.lock().unwrap().skip();
-        return;
+        return Ok(());
     }
 
-    let _ = get_context_template(context, &response.path);
+    let header = get_context_template(context, response);
+
+    if contains_copyright_notice(&response.content) {
+        return Ok(());
+    }
+
+    let mut line = extract_hash_bang(response.content.as_bytes()).unwrap_or_default();
+    let mut content = response.content.as_bytes().to_vec();
+    if !line.is_empty() {
+        content = content.split_off(line.len());
+        if line[line.len() - 1] != b'\n' {
+            line.push(b'\n');
+        }
+        content = [line, header.template.as_bytes().to_vec(), content].concat();
+    } else {
+        content = [header.template.as_bytes().to_vec(), content].concat();
+    }
+
+    fs::write(&response.path, content)?;
+    println!(
+        "License applied to: {}",
+        &response.path.file_name().unwrap().to_str().unwrap()
+    );
+
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
@@ -162,30 +167,29 @@ impl Cachable for LicenseHeaderTemplate {
     }
 }
 
-fn get_context_template<P>(context: &mut ScanContext, path: P)
-where
-    P: AsRef<Path>,
-{
+fn get_context_template(
+    context: &mut ScanContext,
+    task: &FileTaskResponse,
+) -> Arc<LicenseHeaderTemplate> {
     // FIXME: Compute cache id in FileTree
-    let cache_id = get_path_suffix(path.as_ref());
+    let cache_id = get_path_suffix(&task.path);
 
-    if context.cache.contains(&cache_id) {
-        // Reuse cached template for this candidate
-        println!("Cached template found for cache ID: {}", &cache_id);
-
-        let header = &context.cache.get(&cache_id).unwrap();
-        let template = &header.template;
-    } else {
+    // Reuse cached template for this candidate
+    if !context.cache.contains(&cache_id) {
         // Compile and cache template for this candidate
         println!("Template not in cache for cache ID: {}", &cache_id);
 
-        // TODO: Compile license template based on CLI args
-        let compiled_template = "Some random compiled string";
+        let header = SourceHeaders::find_header_definition_by_extension(&cache_id).unwrap();
+        let template = context.template.lock().unwrap();
+        let template = template.as_str();
+        let compiled_template = header.header_prefix.apply(template).unwrap();
 
         // Add compiled template to cache
         context.cache.add(LicenseHeaderTemplate {
-            extension: cache_id,
-            template: compiled_template.into(),
+            extension: cache_id.clone(),
+            template: compiled_template,
         });
     }
+
+    context.cache.get(&cache_id).unwrap()
 }

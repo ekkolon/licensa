@@ -250,11 +250,11 @@ where
 ///
 /// This struct manages a collection of `FileTask` instances and provides a method
 /// to run file processing on multiple paths concurrently.
-pub struct FileTree {
+pub struct WorkTree {
     tasks: Vec<Box<dyn FileTask>>,
 }
 
-impl FileTree {
+impl WorkTree {
     /// Adds a file processor to the work tree processor.
     ///
     /// # Arguments
@@ -338,7 +338,7 @@ mod tests {
             }
         }
 
-        let processor = FileTree {
+        let processor = WorkTree {
             tasks: vec![Box::new(MockFileTask)],
         };
 
@@ -372,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_work_tree_processor() {
-        let mut work_tree_processor = FileTree { tasks: vec![] };
+        let mut work_tree_processor = WorkTree { tasks: vec![] };
 
         let receiver = work_tree_processor.add_task(MockContext, mock_function);
 

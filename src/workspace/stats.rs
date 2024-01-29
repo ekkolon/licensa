@@ -1,5 +1,3 @@
-
-
 pub struct ScanStats {
     pub skipped: usize,
 }
