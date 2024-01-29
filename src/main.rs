@@ -8,15 +8,18 @@ mod cli;
 mod config;
 mod copyright_notice;
 mod env;
+mod header;
+mod helpers;
 mod interpolation;
 mod license;
 mod logger;
-mod scanner;
-mod source;
 mod spdx;
 mod store;
+#[cfg(test)]
+mod test_utils;
 mod utils;
 mod validator;
+mod workspace;
 
 use clap::Parser;
 use cli::Commands;
@@ -38,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match &cli.command {
         Commands::Init(args) => {
             println!("{:?}", &args);
-            scanner::_examples::example_scan_op()?;
+            workspace::_examples::example_scan_parallel()?;
         }
 
         Commands::Apply(args) => {
