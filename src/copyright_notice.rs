@@ -76,12 +76,20 @@ impl Interpolate for CompactCopyrightNotice {
 }
 
 pub fn contains_copyright_notice<F: AsRef<str>>(file_content: F) -> bool {
-    let spdx_notice = r"Copyright(?: \d{4})? .+[\n\r]?.*SPDX-License-Identifier:";
-    let compact_notice = r"Copyright(?: \d{4})? .+[\n\r]?.*Use of this source code is governed by an .+-style license that can be.*found in the LICENSE file.*";
+    let comment_regex = Regex::new(r#"(//|/\*|\*/|\#|<!--|--|'|<!--|""|--\[\[|--\[)"#).unwrap();
 
-    let spdx_regex = Regex::new(spdx_notice).expect("Invalid regex");
-    let compact_regex = Regex::new(compact_notice).expect("Invalid regex");
+    // Check for common license-related keywords within comments
+    let license_keywords = ["copyright", "license", "spdx-license-identifier"];
 
-    let f_content = file_content.as_ref();
-    spdx_regex.is_match(f_content) || compact_regex.is_match(f_content)
+    for keyword in &license_keywords {
+        let pattern = format!(r"(?i)\b{}\b", keyword); // Use (?i) for case-insensitive matching
+        let full_pattern = format!(r#"{}.*{}"#, comment_regex.as_str(), pattern);
+        let regex = Regex::new(&full_pattern).expect("Invalid regex");
+
+        if regex.is_match(file_content.as_ref()) {
+            return true;
+        }
+    }
+
+    false
 }
