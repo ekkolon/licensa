@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Apply(args) => {
-            println!("{:?}", &args);
+            cli::apply::build(args)?;
         }
 
         Commands::Verify(args) => {

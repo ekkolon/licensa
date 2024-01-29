@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-mod apply;
+pub mod apply;
 mod init;
 pub mod list;
 pub mod verify;
