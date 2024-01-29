@@ -8,6 +8,7 @@ mod cli;
 mod config;
 mod copyright_notice;
 mod env;
+mod header;
 mod helpers;
 mod interpolation;
 mod license;
@@ -16,6 +17,8 @@ mod scanner;
 mod source;
 mod spdx;
 mod store;
+#[cfg(test)]
+mod test_utils;
 mod utils;
 mod validator;
 mod workspace;

@@ -312,9 +312,7 @@ impl FileTree {
 
 #[cfg(test)]
 mod tests {
-    use std::{fs::File, path::Path};
-
-    use tempfile::TempDir;
+    use crate::test_utils::create_temp_file;
 
     use super::*;
 
@@ -326,14 +324,6 @@ mod tests {
     fn mock_function(_context: &mut MockContext, _file_contents: &FileTaskResponse) -> i32 {
         // Mock processing logic
         42
-    }
-
-    fn create_temp_file<N: AsRef<Path>>(name: N) -> (TempDir, PathBuf) {
-        let tmp_dir = tempfile::tempdir().unwrap();
-        let tmp_file = &tmp_dir.path().to_path_buf();
-        let tmp_file = tmp_file.join::<PathBuf>(name.as_ref().into());
-        File::create(&tmp_file).unwrap();
-        (tmp_dir, tmp_file.to_owned())
     }
 
     #[test]
