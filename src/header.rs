@@ -311,13 +311,14 @@ mod tests {
             .unwrap();
         let expected: &str = r#"// Copyright 2022 Jane Doe
 // SPDX-License-Identifier: MIT
+
 "#;
         assert_eq!(&result, expected);
 
         // Test case 2: Empty template and prefix
         let empty_template = "";
         let result = rs_header_prefix.apply(empty_template).unwrap();
-        let expected = "";
+        let expected = "\n";
         assert_eq!(&result, expected);
 
         // JavaScript
@@ -332,6 +333,7 @@ mod tests {
  * Copyright 2022 Jane Doe
  * SPDX-License-Identifier: MIT
  */
+
 "#;
         assert_eq!(&result, expected);
 
@@ -356,6 +358,7 @@ mod tests {
  * Use of this source code is governed by an Apache-2.0-style license that can be
  * found in the LICENSE file in the root of this project.
  */
+
 "#;
 
         assert_eq!(&result, expected);
