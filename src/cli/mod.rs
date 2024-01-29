@@ -10,7 +10,10 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
+use apply::ApplyArgs;
+use init::InitArgs;
 use list::ListArgs;
+use verify::VerifyArgs;
 
 /// Licensia is an experimental CLI tool to enforce, verify, apply and modify
 /// file license headers for a variaty of programming languages.
