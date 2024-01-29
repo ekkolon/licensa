@@ -1,15 +1,19 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-mod apply;
+pub mod apply;
 mod init;
+pub mod list;
 pub mod verify;
 
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use self::{apply::ApplyArgs, init::InitArgs, verify::VerifyArgs};
+use apply::ApplyArgs;
+use init::InitArgs;
+use list::ListArgs;
+use verify::VerifyArgs;
 
 /// Licensia is an experimental CLI tool to enforce, verify, apply and modify
 /// file license headers for a variaty of programming languages.
@@ -54,5 +58,5 @@ pub enum Commands {
 
     /// Get a list of available licenses
     #[command(name = "list")]
-    List,
+    List(ListArgs),
 }

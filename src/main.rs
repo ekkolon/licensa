@@ -23,7 +23,6 @@ mod workspace;
 
 use clap::Parser;
 use cli::Commands;
-use license::LicensesManifest;
 use mimalloc::MiMalloc;
 
 use crate::cli::Cli;
@@ -45,15 +44,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Apply(args) => {
-            println!("{:?}", &args);
+            cli::apply::build(args)?;
         }
 
         Commands::Verify(args) => {
             cli::verify::build(args)?;
         }
 
-        Commands::List => {
-            LicensesManifest::print_license_table();
+        Commands::List(args) => {
+            cli::list::build(args);
         }
     };
 

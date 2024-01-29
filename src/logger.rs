@@ -37,7 +37,7 @@ macro_rules! success {
         println!("{level}: {}", $message);
     };
 }
-// pub(crate) use success;
+pub(crate) use success;
 
 macro_rules! failure {
     ($message:expr) => {
@@ -53,4 +53,4 @@ macro_rules! warning {
         println!("{level}: {}", $message);
     };
 }
-// pub(crate) use warning;
+pub(crate) use warning;
