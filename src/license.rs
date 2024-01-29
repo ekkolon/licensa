@@ -3,7 +3,6 @@
 
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use tabled::{settings::Settings, Table, Tabled};
 
 use crate::utils::loadfile;
 
@@ -38,43 +37,6 @@ impl LicensesManifest {
             .map(|license| license.spdx_id.to_string())
             .collect::<Vec<String>>()
     }
-
-    pub fn print_license_table() {
-        println!("{}", LicensesManifest::table())
-    }
-
-    fn table() -> Table {
-        let table_config = Settings::default()
-            .with(tabled::settings::Panel::header("Available SPDX Licenses"))
-            .with(tabled::settings::Padding::new(1, 1, 0, 0))
-            .with(tabled::settings::Style::modern_rounded());
-
-        let table_items: Vec<LicenseMetadataTableItem> = LicensesManifest::licenses()
-            .iter()
-            .map(|license| license.to_table_item())
-            .collect();
-
-        let mut table = Table::new(table_items);
-
-        table.with(table_config);
-
-        table.modify(
-            tabled::settings::object::Rows::first(),
-            tabled::settings::Height::increase(2),
-        );
-
-        table
-            .modify((0, 0), tabled::settings::Span::column(2))
-            .modify(
-                tabled::settings::object::Rows::first(),
-                tabled::settings::Alignment::center(),
-            )
-            .modify(
-                tabled::settings::object::Columns::last(),
-                tabled::settings::Alignment::center(),
-            )
-            .to_owned()
-    }
 }
 
 /// Represents license metadata.
@@ -96,10 +58,10 @@ struct License {
 #[serde(rename_all = "camelCase")]
 pub struct LicenseMetadata {
     /// The name of the license.
-    name: String,
+    pub name: String,
 
     /// The SPDX identifier of the license.
-    spdx_id: String,
+    pub spdx_id: String,
 
     /// The SPDX identifier of the license in lowercase.
     spdx_id_lower: String,
@@ -115,31 +77,4 @@ pub struct LicenseMetadata {
 
     /// Additional fields associated with the license.
     fields: Vec<String>,
-}
-
-impl LicenseMetadata {
-    pub fn to_table_item(&self) -> LicenseMetadataTableItem {
-        // let nickname = self.nickname.clone().unwrap_or("-".to_string()).to_string();
-
-        LicenseMetadataTableItem {
-            name: self.name.to_string(),
-            spdx_id: self.spdx_id.to_string(),
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Tabled)]
-#[serde(rename_all = "camelCase")]
-#[tabled(rename_all = "UPPERCASE")]
-pub struct LicenseMetadataTableItem {
-    /// The name of the license.
-    name: String,
-
-    /// The SPDX identifier of the license.
-    #[tabled(rename = "SPDX ID")]
-    spdx_id: String,
-}
-
-fn default_table_item_nickname() -> String {
-    "-".to_string()
 }
