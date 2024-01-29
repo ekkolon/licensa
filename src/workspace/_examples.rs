@@ -130,10 +130,6 @@ fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) -> Result<
 
     let header = get_context_template(context, response);
 
-    if contains_copyright_notice(&response.content) {
-        return Ok(());
-    }
-
     let mut line = extract_hash_bang(response.content.as_bytes()).unwrap_or_default();
     let mut content = response.content.as_bytes().to_vec();
     if !line.is_empty() {
