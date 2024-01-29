@@ -3,7 +3,7 @@
 
 mod apply;
 mod init;
-mod verify;
+pub mod verify;
 
 use std::path::PathBuf;
 
