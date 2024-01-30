@@ -49,7 +49,7 @@ pub struct Config {
     pub year: u16,
 
     /// The full name of the copyright holder.
-    #[serde(rename(deserialize = "fullname"))]
+    #[serde(rename(serialize = "fullname"))]
     pub holder: String,
 
     /// The remote URL where the project lives.
@@ -172,7 +172,7 @@ impl Config {
 ///     this fallbacks to the **SPDX** format, or if specified, the `fallback`
 ///     format option that can be specified in the *generator* config.
 #[derive(Debug, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "lowercase")]
 pub enum CopyrightNoticeFormat {
     /// Renders a two line header text in SPDX format.
     ///
@@ -229,7 +229,13 @@ impl From<&str> for CopyrightNoticeFormat {
         match value.to_lowercase().as_ref() {
             "compact" => CopyrightNoticeFormat::Compact,
             "full" => CopyrightNoticeFormat::Full,
-            _ => CopyrightNoticeFormat::Spdx,
+            "spdx" => CopyrightNoticeFormat::Spdx,
+            val => Cli::command()
+                .error(
+                    clap::error::ErrorKind::InvalidValue,
+                    anyhow!("invalid copyright notice formate '{val}'"),
+                )
+                .exit(),
         }
     }
 }
