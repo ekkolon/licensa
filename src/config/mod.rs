@@ -3,6 +3,8 @@
 
 //! Licensa configuration file parser and utils
 
+pub mod builder;
+
 use anyhow::{anyhow, Ok, Result};
 use clap::CommandFactory;
 use serde::{Deserialize, Serialize};
