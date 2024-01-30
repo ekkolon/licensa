@@ -32,9 +32,6 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Configure logging
-    logger::init();
-
     let cli = Cli::parse();
 
     match &cli.command {
