@@ -14,7 +14,6 @@ use std::path::Path;
 use crate::cli::Cli;
 use crate::utils::{self, check_any_file_exists};
 
-const DEFAULT_LICENSE_TYPE: &str = "MIT";
 const DEFAULT_CONFIG_FILENAME: &str = ".licensarc";
 const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
 
@@ -32,41 +31,76 @@ const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
 /// accepts a `--config` flag, which, when present, explicitly requests
 /// the usage of a specific Licensa config file.
 ///
-/// It is assumed the file is in valid JSON format and be one of the
-/// following filenames:
+/// It is assumed the file is in valid JSON format and is named after one
+/// of the following filenames:
 ///
 ///   - `.licensarc`
-///   - `.licensa.json`
-#[derive(Debug, Serialize, Deserialize)]
+///   - `.licensarc.json`
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
-    #[serde(default = "default_license_type", rename = "type")]
-    pub license_type: String,
+    /// The license SPDX ID.
+    pub license: String,
 
-    pub author: String,
-
+    /// The license year.
     #[serde(default = "utils::current_year")]
     pub year: u16,
 
-    pub generator: GeneratorConfig,
-}
+    /// The full name of the copyright holder.
+    #[serde(rename(deserialize = "fullname"))]
+    pub holder: String,
 
-#[derive(Debug, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct GeneratorConfig {
-    #[serde(default = "default_spdx_only_flag")]
-    pub spdx_only: bool,
+    /// The remote URL where the project lives.
+    ///
+    /// Note that most licenses don't require this field, however,
+    /// there are a few that do:
+    ///
+    /// - **OFL-1.1**
+    ///
+    /// An interpolation error will occur if this field is missing in
+    /// an attempt to apply a copyright notice to a license requiring
+    /// this field.
+    pub email: Option<String>,
 
-    pub license_file: Option<String>,
+    /// The remote URL where the project lives.
+    ///
+    /// Note that most licenses don't require this field, however,
+    /// there are a few that do:
+    ///
+    /// - **BSD-4-Clause**
+    /// - **MulanPSL-2.0**
+    /// - **NCSA**
+    /// - **Vim**
+    ///
+    /// An interpolation error will occur if this field is missing in
+    /// an attempt to apply a copyright notice to a license requiring
+    /// this field.
+    #[serde(default)]
+    pub project: Option<String>,
 
-    #[serde(default = "default_allowed_licenses")]
-    pub allowed_licenses: Vec<String>,
+    /// The remote URL where the project lives.
+    ///
+    /// Note that most licenses don't require this field, however,
+    /// there are a few that do:
+    ///
+    /// - **NCSA**
+    ///
+    /// An interpolation error will occur if this field is missing in
+    /// an attempt to apply a copyright notice to a license requiring
+    /// this field.
+    #[serde(rename(deserialize = "projecturl"))]
+    pub project_url: Option<url::Url>,
 
-    #[serde(default = "default_ignore_patterns")]
-    pub ignore_patterns: Vec<String>,
+    /// The copyright header format to apply.
+    #[serde(default)]
+    pub format: CopyrightNoticeFormat,
 
-    #[serde(default = "default_gitignore")]
-    pub gitignore: bool,
+    /// A list of glob patterns to exclude from the licensing process.
+    ///
+    /// Defining patterns here is synonymous to adding them either to
+    /// the `.gitignore` or `.licensaignore` file.
+    #[serde(default = "default_exclude_patterns")]
+    pub exclude: Vec<String>,
 }
 
 impl Config {
@@ -104,6 +138,97 @@ impl Config {
         };
 
         Ok(())
+    }
+}
+
+/// The copyright header format to apply on each file to be licensed.
+///
+/// You can choose from three built-in copyright notice formats:
+///
+/// - **Spdx** (default)
+///     
+///     Based on the SPDX license format and rendered in two lines
+///
+/// - **Compact**
+///
+///     A short, four lines long format that refers users to the
+///     the location at which the full license file is found.
+///
+///     *Remarks*:
+///
+///     The location can be either a path to a file within the
+///     repository or an URL.
+///
+/// - **Full**
+///     
+///     Render the full license header.
+///     
+///     *Remarks*:
+///
+///     This option only applies to licenses that provide a license header
+///     (e.g. Apache-2.0 or 0BSD). In cases where no license header is available
+///     this fallbacks to the **SPDX** format, or if specified, the `fallback`
+///     format option that can be specified in the *generator* config.
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum CopyrightNoticeFormat {
+    /// Renders a two line header text in SPDX format.
+    ///
+    /// # Example
+    ///
+    /// *licensed_file.rs*
+    /// ```no_run
+    /// // Copyright 2012 Bilbo Baggins
+    /// // SPDX-License-Identifier: WTFPL
+    ///
+    /// fn main() {}   
+    /// ```
+    #[default]
+    Spdx,
+
+    /// Renders a short header text that hints to the location
+    /// of the original LICENSE file.
+    ///
+    /// # Example
+    ///
+    /// *licensed_file.rs*
+    /// ```no_run
+    /// // Copyright 2001 Frodo Baggins
+    /// // Use of this source code is governed by an MIT-style license that can be
+    /// // found in the LICENSE file in the root of this project.
+    ///     
+    /// fn main() {}   
+    /// ```
+    Compact,
+
+    /// Renders the full license header, if available.
+    ///
+    /// # Example
+    ///
+    /// *licensed_file.rs*
+    /// ```no_run
+    /// // This Source Code Form is subject to the terms of the Mozilla Public
+    /// // License, v. 2.0. If a copy of the MPL was not distributed with this
+    /// // file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    ///
+    /// fn main() {}
+    /// ```
+    Full,
+}
+
+impl From<String> for CopyrightNoticeFormat {
+    fn from(value: String) -> Self {
+        CopyrightNoticeFormat::from(value.as_str())
+    }
+}
+
+impl From<&str> for CopyrightNoticeFormat {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_ref() {
+            "compact" => CopyrightNoticeFormat::Compact,
+            "full" => CopyrightNoticeFormat::Full,
+            _ => CopyrightNoticeFormat::Spdx,
+        }
     }
 }
 
@@ -197,28 +322,8 @@ fn check_dir<P: AsRef<Path>>(dir: P) {
 }
 
 #[inline]
-fn default_license_type() -> String {
-    DEFAULT_LICENSE_TYPE.to_string()
-}
-
-#[inline]
-fn default_ignore_patterns() -> Vec<String> {
+fn default_exclude_patterns() -> Vec<String> {
     vec![]
-}
-
-#[inline]
-fn default_gitignore() -> bool {
-    true
-}
-
-#[inline]
-fn default_spdx_only_flag() -> bool {
-    false
-}
-
-#[inline]
-fn default_allowed_licenses() -> Vec<String> {
-    vec!["*".to_string()]
 }
 
 #[cfg(test)]
@@ -312,10 +417,14 @@ mod tests {
 
         // Create a sample configuration
         let sample_config = Config {
-            author: "John Doe".to_string(),
-            generator: GeneratorConfig::default(),
-            license_type: "MIT".to_string(),
+            license: "MIT".to_string(),
             year: 2024,
+            holder: "John Doe".to_string(),
+            project: None,
+            email: None,
+            project_url: None,
+            format: CopyrightNoticeFormat::Spdx,
+            exclude: vec![],
         };
 
         // Test writing the config file
@@ -354,9 +463,13 @@ mod tests {
 
         // Create a sample configuration
         let sample_config = Config {
-            author: "John Doe".to_string(),
-            generator: GeneratorConfig::default(),
-            license_type: "MIT".to_string(),
+            holder: "John Doe".to_string(),
+            exclude: vec![],
+            project: None,
+            email: None,
+            project_url: None,
+            format: CopyrightNoticeFormat::Spdx,
+            license: "MIT".to_string(),
             year: 2024,
         };
 
