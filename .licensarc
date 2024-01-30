@@ -1,15 +1,10 @@
 {
-  "type": "Apache-2.0",
-  "author": "Nelson Dominguez",
+  "license": "Apache-2.0",
+  "holder": "Nelson Dominguez",
+  "email": "ekkolon@proton.me",
   "year": 2024,
-  "generator": {
-    "spdxOnly": true,
-    "licenseFile": "./LICENSE",
-    "allowedTypes": [
-      "mit",
-      "apache"
-    ],
-    "ignorePatterns": [],
-    "gitignore": true
-  }
+  "project": "Licensa",
+  "projectUrl": "https://github.com/ekkolon/licensa",
+  "format": "spdx",
+  "exclude": []
 }
