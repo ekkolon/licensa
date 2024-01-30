@@ -21,3 +21,7 @@ pub struct InitArgs {
     #[arg(default_value_t = utils::current_year())]
     pub year: u16,
 }
+
+pub fn build(args: &InitArgs) -> anyhow::Result<()> {
+    Ok(())
+}
