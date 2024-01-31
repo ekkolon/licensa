@@ -3,7 +3,7 @@
 
 use std::env::current_dir;
 
-use crate::config::{find_config_file, Config};
+use crate::config::{resolve_workspace_config, Config};
 use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
 // use crate::validator;
 use anyhow::Result;
@@ -12,14 +12,14 @@ use serde::{Deserialize, Serialize};
 
 use super::Cli;
 
-pub fn run(args: &AddCommandOptions) -> Result<()> {
-    let config = args.merge_with_config()?;
+pub fn run(args: &AddArgs) -> Result<()> {
+    let config = args.to_config()?;
     println!("{config:#?}");
     Ok(())
 }
 
 #[derive(Parser, Debug, Serialize, Clone)]
-pub struct AddCommandOptions {
+pub struct AddArgs {
     /// License SPDX ID.
     #[arg(short = 't', long = "type")]
     pub license: Option<LicenseId>,
@@ -55,17 +55,11 @@ pub struct AddCommandOptions {
     pub location: Option<String>,
 }
 
-impl AddCommandOptions {
+impl AddArgs {
     // Merge self with config::Config
-    fn merge_with_config(&self) -> Result<AddCommandConfig> {
-        let mut config = Config::from_defaults();
-
-        // Read config file, if it exists and update config
-        let config_file = find_config_file(current_dir()?);
-        if let Ok(parsed_config) = config_file {
-            let parsed_config = serde_json::from_str::<Config>(&parsed_config)?;
-            config.update(parsed_config);
-        }
+    fn to_config(&self) -> Result<AddCommandConfig> {
+        let workspace_root = current_dir()?;
+        let mut config = resolve_workspace_config(workspace_root)?;
 
         config.update(Config {
             license: self.license.clone(),
@@ -88,18 +82,32 @@ impl AddCommandOptions {
             missing_required_arg_error("-y, --year <YEAR>")
         }
 
-        let opts = serde_json::to_value(AddCommandOptions {
+        let opts = serde_json::to_value(AddArgs {
             format: config.format,
             license: config.license,
             owner: config.owner,
             year: config.year,
             determiner: self.determiner.clone(),
             location: self.location.clone(),
-        })?;
+        });
 
-        let config = serde_json::from_value::<AddCommandConfig>(opts)?;
+        if let Err(err) = opts.as_ref() {
+            let err_msg = format!("Failed to serialize `add` command arguemnts.\n {}", err);
+            Cli::command()
+                .error(clap::error::ErrorKind::ValueValidation, err_msg)
+                .exit();
+        }
 
-        Ok(config)
+        let config = serde_json::from_value::<AddCommandConfig>(opts.unwrap());
+
+        if let Err(err) = config.as_ref() {
+            let err_msg = format!("Failed to deserialize `add` command arguemnts.\n {}", err);
+            Cli::command()
+                .error(clap::error::ErrorKind::ValueValidation, err_msg)
+                .exit();
+        }
+
+        Ok(config.unwrap())
     }
 }
 
