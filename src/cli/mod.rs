@@ -16,7 +16,7 @@ use init::InitArgs;
 use list::ListArgs;
 use verify::VerifyArgs;
 
-use self::add::AddArgs;
+use add::AddCommandOptions;
 
 /// Licensia is an experimental CLI tool to enforce, verify, apply and modify
 /// file license headers for a variaty of programming languages.
@@ -65,5 +65,5 @@ pub enum Commands {
 
     /// Add license header to one or more files
     #[command(name = "add")]
-    Add(AddArgs),
+    Add(AddCommandOptions),
 }
