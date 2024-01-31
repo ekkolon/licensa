@@ -4,13 +4,12 @@
 use std::env::current_dir;
 
 use crate::config::{resolve_workspace_config, Config};
+use crate::error;
 use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
-// use crate::validator;
-use anyhow::Result;
-use clap::{CommandFactory, Parser};
-use serde::{Deserialize, Serialize};
 
-use super::Cli;
+use anyhow::Result;
+use clap::Parser;
+use serde::{Deserialize, Serialize};
 
 pub fn run(args: &AddArgs) -> Result<()> {
     let config = args.to_config()?;
@@ -70,41 +69,35 @@ impl AddArgs {
         });
 
         if config.license.is_none() {
-            missing_required_arg_error("-t, --type <LICENSE>")
+            error::missing_required_arg_error("-t, --type <LICENSE>")
         }
         if config.owner.is_none() {
-            missing_required_arg_error("-o, --owner <OWNER>")
+            error::missing_required_arg_error("-o, --owner <OWNER>")
         }
         if config.format.is_none() {
-            missing_required_arg_error("-f, --format <FORMAT>")
+            error::missing_required_arg_error("-f, --format <FORMAT>")
         }
         if config.format.is_none() {
-            missing_required_arg_error("-y, --year <YEAR>")
+            error::missing_required_arg_error("-y, --year <YEAR>")
         }
 
-        let opts = serde_json::to_value(AddArgs {
+        let args = AddArgs {
             format: config.format,
             license: config.license,
             owner: config.owner,
             year: config.year,
             determiner: self.determiner.clone(),
             location: self.location.clone(),
-        });
+        };
 
-        if let Err(err) = opts.as_ref() {
-            let err_msg = format!("Failed to serialize `add` command arguemnts.\n {}", err);
-            Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, err_msg)
-                .exit();
+        let args = serde_json::to_value(args);
+        if let Err(err) = args.as_ref() {
+            error::serialize_args_error("add", err)
         }
 
-        let config = serde_json::from_value::<AddCommandConfig>(opts.unwrap());
-
+        let config = serde_json::from_value::<AddCommandConfig>(args.unwrap());
         if let Err(err) = config.as_ref() {
-            let err_msg = format!("Failed to deserialize `add` command arguemnts.\n {}", err);
-            Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, err_msg)
-                .exit();
+            error::deserialize_args_error("add", err)
         }
 
         Ok(config.unwrap())
@@ -119,16 +112,4 @@ pub struct AddCommandConfig {
     pub format: LicenseNoticeFormat,
     pub determiner: Option<String>,
     pub location: Option<String>,
-}
-
-fn missing_required_arg_error<T>(arg: T)
-where
-    T: AsRef<str>,
-{
-    Cli::command()
-        .error(
-            clap::error::ErrorKind::MissingRequiredArgument,
-            format!("Missing required argument {}", arg.as_ref()),
-        )
-        .exit()
 }

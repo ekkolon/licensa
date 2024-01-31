@@ -8,6 +8,7 @@ mod cli;
 mod config;
 mod copyright_notice;
 mod env;
+mod error;
 mod header;
 mod helpers;
 mod interpolation;
