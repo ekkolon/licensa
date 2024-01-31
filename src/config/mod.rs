@@ -3,7 +3,7 @@
 
 //! Licensa configuration file parser and utils
 
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{anyhow, Result};
 use clap::CommandFactory;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
@@ -298,6 +298,30 @@ where
     ))
 }
 
+/// Try to resolve workspace configuration and merge those with defaults.
+pub fn resolve_workspace_config<T>(workspace_root: T) -> Result<Config>
+where
+    T: AsRef<Path>,
+{
+    let mut config = Config::from_defaults();
+
+    // Read config file, if it exists and update config
+    let config_file = find_config_file(workspace_root.as_ref());
+    if let Ok(parsed_config) = config_file {
+        let parsed_config = serde_json::from_str::<Config>(&parsed_config);
+        if let Err(err) = parsed_config {
+            // Config file found but failed parsing.
+            let err_msg = format!("Failed to parse Licensa config file.\n {}", err);
+            Cli::command()
+                .error(clap::error::ErrorKind::Io, err_msg)
+                .exit();
+        }
+        config.update(parsed_config.unwrap());
+    }
+
+    Ok(config)
+}
+
 #[inline]
 fn check_dir<P: AsRef<Path>>(dir: P) {
     if !dir.as_ref().is_dir() {
@@ -308,11 +332,6 @@ fn check_dir<P: AsRef<Path>>(dir: P) {
             )
             .exit()
     }
-}
-
-#[inline]
-fn default_exclude_patterns() -> Vec<String> {
-    vec![]
 }
 
 #[cfg(test)]
