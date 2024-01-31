@@ -77,9 +77,6 @@ impl AddArgs {
         if config.format.is_none() {
             error::missing_required_arg_error("-f, --format <FORMAT>")
         }
-        if config.format.is_none() {
-            error::missing_required_arg_error("-y, --year <YEAR>")
-        }
 
         let args = AddArgs {
             format: config.format,
