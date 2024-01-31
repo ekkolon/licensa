@@ -36,11 +36,11 @@ pub struct Cli {
     pub verbose: bool,
 
     #[command(subcommand)]
-    pub command: Commands,
+    pub subcommands: SubCommands,
 }
 
 #[derive(Subcommand, Debug)]
-pub enum Commands {
+pub enum SubCommands {
     /// Verify presence of license headers in one or more files.
     ///
     /// A glob pattern may be used to verify multiple files that recursively.

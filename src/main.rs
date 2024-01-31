@@ -23,7 +23,7 @@ mod validator;
 mod workspace;
 
 use clap::Parser;
-use cli::Commands;
+use cli::SubCommands;
 use mimalloc::MiMalloc;
 
 use crate::cli::Cli;
@@ -35,23 +35,23 @@ static GLOBAL: MiMalloc = MiMalloc;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
-    match &cli.command {
-        Commands::Init(args) => {
+    match &cli.subcommands {
+        SubCommands::Init(args) => {
             cli::init::run(args)?;
         }
 
-        Commands::Apply(args) => {
+        SubCommands::Apply(args) => {
             cli::apply::run(args)?;
         }
 
-        Commands::Verify(args) => {
+        SubCommands::Verify(args) => {
             cli::verify::run(args)?;
         }
 
-        Commands::List(args) => {
+        SubCommands::List(args) => {
             cli::list::run(args);
         }
-        Commands::Add(args) => {
+        SubCommands::Add(args) => {
             cli::add::run(args)?;
         }
     };
