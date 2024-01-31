@@ -50,6 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::List(args) => {
             cli::list::build(args);
         }
+        Commands::Add(args) => {
+            println!("{args:?}");
+        }
     };
 
     Ok(())
