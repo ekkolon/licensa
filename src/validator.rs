@@ -27,6 +27,39 @@ pub fn acceptable_year(s: &str) -> Result<u16, String> {
     }
 }
 
+pub fn is_valid_year<T>(input: T) -> bool
+where
+    T: ToString,
+{
+    let input = input.to_string();
+    if input.len() != 4 {
+        return false; // Year must be 4 digits
+    }
+
+    let digits: Vec<char> = input.chars().collect();
+    for digit in digits {
+        if !digit.is_ascii_digit() {
+            return false; // Year must only contain digits
+        }
+    }
+
+    // Assume parse succeeds
+    let year = input.parse();
+    if let Ok(year) = year {
+        if !(1..=9999).contains(&year) {
+            return false; // Year must be within 1 to 9999 range
+        }
+
+        if year % 4 == 0 && year % 100 == 0 && year % 400 != 0 {
+            return false; // Not a valid leap year
+        }
+
+        return true; // Valid year
+    }
+
+    false
+}
+
 #[inline]
 fn get_acceptable_year_range() -> RangeInclusive<u16> {
     EARLIEST_LICENSE_YEAR..=current_year()
