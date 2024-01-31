@@ -10,7 +10,7 @@ use crate::license::{LicenseMetadata, LicensesManifest};
 #[derive(Args, Debug)]
 pub struct ListArgs;
 
-pub fn build(args: &ListArgs) {
+pub fn run(args: &ListArgs) {
     println!("{}", table())
 }
 
