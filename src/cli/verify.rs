@@ -26,7 +26,7 @@ struct ScanContext {
     pub stats: Arc<Mutex<ScanStats>>,
 }
 
-pub fn build(args: &VerifyArgs) -> anyhow::Result<()> {
+pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
     // only: DEBUG
     let mut channel_duration = ChannelDuration::new();
 

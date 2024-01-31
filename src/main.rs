@@ -37,19 +37,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match &cli.command {
         Commands::Init(args) => {
-            cli::init::build(args)?;
+            cli::init::run(args)?;
         }
 
         Commands::Apply(args) => {
-            cli::apply::build(args)?;
+            cli::apply::run(args)?;
         }
 
         Commands::Verify(args) => {
-            cli::verify::build(args)?;
+            cli::verify::run(args)?;
         }
 
         Commands::List(args) => {
-            cli::list::build(args);
+            cli::list::run(args);
         }
         Commands::Add(args) => {
             cli::add::run(args)?;

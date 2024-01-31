@@ -22,6 +22,6 @@ pub struct InitArgs {
     pub year: u16,
 }
 
-pub fn build(args: &InitArgs) -> anyhow::Result<()> {
+pub fn run(args: &InitArgs) -> anyhow::Result<()> {
     Ok(())
 }

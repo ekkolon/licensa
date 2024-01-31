@@ -41,7 +41,7 @@ pub struct ApplyArgs {
     pub year: u16,
 }
 
-pub fn build(args: &ApplyArgs) -> Result<()> {
+pub fn run(args: &ApplyArgs) -> Result<()> {
     // only: DEBUG
     let mut channel_duration = ChannelDuration::new();
 
