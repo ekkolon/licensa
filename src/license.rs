@@ -37,6 +37,15 @@ impl LicensesManifest {
             .map(|license| license.spdx_id.to_string())
             .collect::<Vec<String>>()
     }
+
+    pub fn contains_id<T>(spdx_id: T) -> bool
+    where
+        T: AsRef<str>,
+    {
+        LicensesManifest::ids()
+            .iter()
+            .any(|i| i.to_lowercase() == spdx_id.as_ref().to_lowercase())
+    }
 }
 
 /// Represents license metadata.

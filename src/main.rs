@@ -13,6 +13,7 @@ mod helpers;
 mod interpolation;
 mod license;
 mod logger;
+mod schema;
 mod spdx;
 mod store;
 #[cfg(test)]
@@ -49,6 +50,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         Commands::List(args) => {
             cli::list::build(args);
+        }
+        Commands::Add(args) => {
+            cli::add::run(args)?;
         }
     };
 

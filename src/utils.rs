@@ -26,6 +26,21 @@ pub fn current_year() -> u16 {
         .year() as u16
 }
 
+pub fn is_year_in_range<T>(year: T, start_at: u16, end_at: u16) -> bool
+where
+    T: ToString,
+{
+    let valid_year = is_valid_year(year.to_string());
+    let valid_start_year = is_valid_year(start_at);
+    let valid_end_year = is_valid_year(end_at);
+    if !valid_year || valid_start_year || valid_end_year {
+        return false;
+    }
+
+    let year: u16 = year.to_string().parse().unwrap();
+    (start_at..=end_at).contains(&year)
+}
+
 /// Writes pretty-formatted JSON data to a file, creating the file if it does not exist.
 ///
 /// # Arguments
@@ -88,6 +103,8 @@ macro_rules! loadfile {
     };
 }
 pub(crate) use loadfile;
+
+use crate::validator::is_valid_year;
 
 #[cfg(test)]
 mod tests {
