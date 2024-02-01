@@ -62,16 +62,6 @@ pub enum SubCommands {
     /// - The current working directory already contains a `.licensarc` file.
     ///
     /// - Invalid arguments are provided.
-    ///
-    /// # Examples:
-    ///
-    /// ```bash
-    /// licensa init --owner "Your Name" --year 2022 --type MIT
-    /// ```
-    ///
-    /// This example initializes Licensa with your specified name, copyright year, and license type.
-    ///
-    /// Note: The `init` command should be executed at the root of your project.
     #[command(name = "init")]
     Init(InitArgs),
 
@@ -81,9 +71,32 @@ pub enum SubCommands {
     #[command(name = "verify")]
     Verify(VerifyArgs),
 
-    /// Apply license header to one or more files.
+    /// Apply copyright license headers to source code files.
     ///
-    /// A glob pattern can be used to run this command on matches recursively.
+    /// The `apply` command recursively scans specified directory patterns and seamlessly adds
+    /// license headers to source files that don't already contain them. Existing headers are
+    /// left untouched, ensuring that files are modified in place without overwriting existing
+    /// licensing information.
+    ///
+    /// You can customize which files and directories are considered for license header application
+    /// by using patterns in the `.gitignore` or `.licensaignore` file. Patterns provided in the
+    /// `.licensaignore` file take precedence over those in the `.gitignore` file.
+    ///
+    /// If a `.licensarc` config file exists in the current working directory, its configuration
+    /// fields are merged with the supplied command arguments. However, command arguments take
+    /// precedence over config field values.
+    ///
+    /// # Errors
+    ///
+    /// The `apply` command may fail in the following scenarios:
+    ///
+    /// - Invalid `.licensarc` config file format (if present)
+    ///
+    /// - Invalid argument value
+    ///
+    /// - Missing required argument
+    ///
+    /// - Insufficient read/write permissions for source files
     #[command(name = "apply")]
     Apply(ApplyArgs),
 
