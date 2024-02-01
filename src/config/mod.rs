@@ -40,7 +40,6 @@ const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct LicensaConfig {
-    #[serde(rename(serialize = "fullname"))]
     pub owner: String,
     pub license: LicenseId,
     pub format: LicenseNoticeFormat,
@@ -48,6 +47,7 @@ pub struct LicensaConfig {
     pub year: Option<LicenseYear>,
     pub email: Option<String>,
     pub project: Option<String>,
+    #[serde(rename(serialize = "projecturl"))]
     pub project_url: Option<url::Url>,
     pub location: Option<String>,
     pub determiner: Option<String>,
