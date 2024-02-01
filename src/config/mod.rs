@@ -6,13 +6,11 @@
 pub mod args;
 
 use anyhow::{anyhow, Result};
-use clap::CommandFactory;
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::fs;
 use std::path::Path;
 
-use crate::cli::Cli;
 use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
 use crate::utils::{self, check_any_file_exists};
 
@@ -51,9 +49,7 @@ pub struct LicensaConfig {
     pub email: Option<String>,
     pub project: Option<String>,
     pub project_url: Option<url::Url>,
-    #[serde(rename = "location")]
     pub location: Option<String>,
-    #[serde(rename = "determiner")]
     pub determiner: Option<String>,
 }
 
@@ -80,17 +76,17 @@ impl LicensaConfig {
     ///
     /// This function does not intentionally panic. If any panics occur, they are likely to be
     /// caused by lower-level functions like `serde_json::to_value` or `utils::write_json`.
-    pub fn generate_workspace_config<P>(&self, workspace_root: P, skip_check: bool) -> Result<()>
+    pub fn generate_config_file<P>(&self, workspace_root: P, skip_check: bool) -> Result<()>
     where
         P: AsRef<Path>,
     {
         let workspace_root = workspace_root.as_ref();
 
-        verify_dir(workspace_root);
+        verify_dir(workspace_root)?;
 
         if !skip_check {
             // Check if config file already exists in provided path, and if so error out
-            throw_when_workspace_config_exists(true, workspace_root)?;
+            throw_if_config_file_exists(true, workspace_root)?;
         }
 
         // Write configs as pretty-json to the default config filename
@@ -130,10 +126,11 @@ where
     T: Borrow<LicensaConfig>,
 {
     let workspace_root = workspace_root.as_ref();
-    verify_dir(workspace_root);
+
+    verify_dir(workspace_root)?;
 
     // Exit when config file already exists
-    throw_when_workspace_config_exists(false, workspace_root)?;
+    throw_if_config_file_exists(false, workspace_root)?;
 
     // Write configs as pretty-json to the default config filename
     let config = serde_json::to_value(config.borrow())?;
@@ -160,7 +157,7 @@ where
 {
     let workspace_root = workspace_root.as_ref();
 
-    verify_dir(workspace_root);
+    verify_dir(workspace_root)?;
 
     let config_path = check_any_file_exists(workspace_root, POSSIBLE_CONFIG_FILENAMES);
     if let Some(path) = config_path {
@@ -183,20 +180,20 @@ where
     check_any_file_exists(workspace_root, POSSIBLE_CONFIG_FILENAMES).map_or(false, |p| true)
 }
 
-pub fn throw_when_workspace_config_exists<P>(must_exist: bool, workspace_root: P) -> Result<()>
+pub fn throw_if_config_file_exists<P>(should_exist: bool, workspace_root: P) -> Result<()>
 where
     P: AsRef<Path>,
 {
     let workspace_root = workspace_root.as_ref();
-    verify_dir(workspace_root);
-    let exists = config_file_exists(workspace_root);
+    verify_dir(workspace_root)?;
 
-    if exists && !must_exist {
+    let exists = config_file_exists(workspace_root);
+    if exists && !should_exist {
         return Err(anyhow!(
             "Licensa is already initialized in the current directory",
         ));
     }
-    if !exists && must_exist {
+    if !exists && should_exist {
         return Err(anyhow!(
             "Licensa config file not found in the current directory"
         ));
@@ -206,15 +203,12 @@ where
 }
 
 #[inline]
-fn verify_dir<P: AsRef<Path>>(dir: P) {
+fn verify_dir<P: AsRef<Path>>(dir: P) -> Result<()> {
     if !dir.as_ref().is_dir() {
-        Cli::command()
-            .error(
-                clap::error::ErrorKind::Io,
-                anyhow!("{} is not a directory", dir.as_ref().display()),
-            )
-            .exit()
+        return Err(anyhow!("{} is not a directory", dir.as_ref().display()));
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
