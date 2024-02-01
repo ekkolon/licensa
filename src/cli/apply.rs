@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::cache::{Cachable, Cache};
-use crate::config::{resolve_workspace_config, Config, LicensaConfig};
+use crate::config::args::Config;
+use crate::config::LicensaConfig;
 use crate::copyright_notice::{
     contains_copyright_notice, CompactCopyrightNotice, SpdxCopyrightNotice,
     COMPACT_COPYRIGHT_NOTICE, SPDX_COPYRIGHT_NOTICE,
@@ -10,13 +11,13 @@ use crate::copyright_notice::{
 use crate::error;
 use crate::header::{extract_hash_bang, SourceHeaders};
 use crate::interpolation::interpolate;
-use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
+use crate::schema::LicenseNoticeFormat;
 use crate::workspace::scan::{get_path_suffix, Scan, ScanConfig};
 use crate::workspace::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::workspace::work_tree::{FileTaskResponse, WorkTree};
 
 use anyhow::Result;
-use clap::{Args, Parser};
+use clap::Parser;
 use colored::Colorize;
 use rayon::prelude::*;
 use serde::Serialize;
@@ -26,6 +27,47 @@ use std::env::current_dir;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+
+#[derive(Parser, Debug, Serialize, Clone)]
+pub struct ApplyArgs {
+    #[command(flatten)]
+    config: Config,
+}
+
+impl ApplyArgs {
+    // Merge self with config::Config
+    fn to_config(&self) -> Result<LicensaConfig> {
+        let workspace_root = current_dir()?;
+        let config = self.config.clone().with_workspace_config(workspace_root)?;
+
+        // Verify required fields such es `license`, `owner` and `format` are set.
+        self.check_required_fields();
+
+        let args = serde_json::to_value(config);
+        if let Err(err) = args.as_ref() {
+            error::serialize_args_error("apply", err)
+        }
+
+        let config = serde_json::from_value::<LicensaConfig>(args.unwrap());
+        if let Err(err) = config.as_ref() {
+            error::deserialize_args_error("apply", err)
+        }
+
+        Ok(config.unwrap())
+    }
+
+    fn check_required_fields(&self) {
+        if self.config.license.is_none() {
+            error::missing_required_arg_error("-t, --type <LICENSE>")
+        }
+        if self.config.owner.is_none() {
+            error::missing_required_arg_error("-o, --owner <OWNER>")
+        }
+        if self.config.format.is_none() {
+            error::missing_required_arg_error("-f, --format <FORMAT>")
+        }
+    }
+}
 
 pub fn run(args: &ApplyArgs) -> Result<()> {
     let mut runner_stats = WorkTreeRunnerStatistics::new("apply", "modified");
@@ -70,88 +112,6 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     runner_stats.print(true);
 
     Ok(())
-}
-
-#[derive(Parser, Debug, Serialize, Clone)]
-pub struct ApplyArgs {
-    /// License SPDX ID.
-    #[arg(short = 't', long = "type")]
-    pub license: Option<LicenseId>,
-
-    /// The copyright owner.
-    #[arg(short, long)]
-    pub owner: Option<String>,
-
-    /// The copyright year.
-    #[arg(short, long)]
-    pub year: Option<LicenseYear>,
-
-    /// The copyright header format to apply on each file to be licensed.
-    #[arg(
-        short,
-        long,
-        value_enum,
-        rename_all = "lower",
-        requires_if("compact", "compact_info")
-    )]
-    pub format: Option<LicenseNoticeFormat>,
-
-    #[command(flatten)]
-    compact_template_args: CompactLicenseNoticeArgs,
-}
-
-#[derive(Debug, Args, Serialize, Clone)]
-#[group(id = "compact_info", required = false, multiple = true)]
-pub struct CompactLicenseNoticeArgs {
-    /// The location where the LICENSE file can be found.
-    ///
-    /// Only takes effect in conjunction with 'compact' format.
-    #[arg(long = "location")]
-    #[serde(rename = "location")]
-    pub license_location: Option<String>,
-
-    /// The word that appears before the path to the license in a sentence (e.g. "in").
-    ///
-    /// Only takes effect in conjunction with 'compact' format.
-    #[arg(long = "determiner")]
-    #[serde(rename = "determiner")]
-    pub license_location_determiner: Option<String>,
-}
-
-impl ApplyArgs {
-    // Merge self with config::Config
-    fn to_config(&self) -> Result<LicensaConfig> {
-        let workspace_root = current_dir()?;
-        let mut config = resolve_workspace_config(workspace_root)?;
-
-        config.update(Config {
-            license: self.license.clone(),
-            owner: self.owner.clone(),
-            format: self.format.clone(),
-            year: self.year.clone(),
-            license_location_determiner: self
-                .compact_template_args
-                .license_location_determiner
-                .clone(),
-            license_location: self.compact_template_args.license_location.clone(),
-            ..Default::default()
-        });
-
-        // Verify required fields such es `license`, `owner` and `format` are set.
-        config.check_required_fields();
-
-        let args = serde_json::to_value(config);
-        if let Err(err) = args.as_ref() {
-            error::serialize_args_error("add", err)
-        }
-
-        let config = serde_json::from_value::<LicensaConfig>(args.unwrap());
-        if let Err(err) = config.as_ref() {
-            error::deserialize_args_error("add", err)
-        }
-
-        Ok(config.unwrap())
-    }
 }
 
 #[derive(Clone)]
@@ -212,8 +172,8 @@ where
                 year: 2024,
                 fullname: config.owner.to_string(),
                 license: config.license.to_string(),
-                determiner: config.license_location_determiner.clone().unwrap(),
-                location: config.license_location.clone().unwrap(),
+                determiner: config.determiner.clone().unwrap(),
+                location: config.location.clone().unwrap(),
             }
         ),
         LicenseNoticeFormat::Full | LicenseNoticeFormat::Spdx => {

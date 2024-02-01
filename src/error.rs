@@ -29,3 +29,10 @@ pub fn serialize_args_error(cmd: &str, err: &serde_json::Error) -> ! {
         .error(clap::error::ErrorKind::ValueValidation, err_msg)
         .exit()
 }
+
+pub fn exit_io_error<M>(err: M)
+where
+    M: std::fmt::Display,
+{
+    Cli::command().error(clap::error::ErrorKind::Io, err).exit();
+}
