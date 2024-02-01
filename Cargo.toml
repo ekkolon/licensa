@@ -37,6 +37,7 @@ ignore = "0.4.22"
 crossbeam-channel = "0.5.11"
 rayon = "1.8.1"
 colored = "2.1.0"
+inquire = "0.6.2"
 
 [badges]
 maintenance = { status = "experimental" }
