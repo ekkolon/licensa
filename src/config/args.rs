@@ -220,7 +220,9 @@ impl Config {
     where
         T: AsRef<Path>,
     {
-        Self::from_workspace_config(workspace_root, Some(self.to_owned()))
+        let mut merge_config = Config::from_defaults();
+        merge_config.update(self.clone());
+        Self::from_workspace_config(workspace_root, Some(merge_config))
     }
 
     /// Try to resolve workspace configuration and merge those with defaults.
