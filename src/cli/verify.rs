@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::config::{resolve_workspace_config, Config};
+use crate::config::args::Config;
 use crate::copyright_notice::contains_copyright_notice;
 use crate::workspace::scan::{Scan, ScanConfig};
 use crate::workspace::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
@@ -18,8 +18,8 @@ use std::sync::{Arc, Mutex};
 pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
     let mut runner_stats = WorkTreeRunnerStatistics::new("verify", "found");
 
-    let workspace_root = std::env::current_dir()?;
-    let workspace_config = args.to_config()?;
+    let workspace_root = current_dir()?;
+    let workspace_config = args.config.clone().with_workspace_config(&workspace_root)?;
 
     // ========================================================
     // Scanning process
@@ -52,15 +52,9 @@ pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
 }
 
 #[derive(Args, Debug)]
-pub struct VerifyArgs {}
-
-impl VerifyArgs {
-    // Merge self with config::Config
-    fn to_config(&self) -> Result<Config> {
-        let workspace_root = current_dir()?;
-        let config = resolve_workspace_config(workspace_root)?;
-        Ok(config)
-    }
+pub struct VerifyArgs {
+    #[command(flatten)]
+    config: Config,
 }
 
 #[derive(Clone)]

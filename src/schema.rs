@@ -118,7 +118,7 @@ impl<'de> Deserialize<'de> for LicenseId {
 ///     (e.g. Apache-2.0 or 0BSD). In cases where no license header is available
 ///     this fallbacks to the **SPDX** format, or if specified, the `fallback`
 ///     format option that can be specified in the *generator* config.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "lowercase")]
 #[derive(clap::ValueEnum)]
 pub enum LicenseNoticeFormat {
@@ -164,6 +164,16 @@ pub enum LicenseNoticeFormat {
     /// fn main() {}
     /// ```
     Full,
+}
+
+impl fmt::Display for LicenseNoticeFormat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Self::Compact => write!(f, "{}", Self::Compact),
+            Self::Full => write!(f, "{}", Self::Full),
+            Self::Spdx => write!(f, "{}", Self::Spdx),
+        }
+    }
 }
 
 impl From<String> for LicenseNoticeFormat {

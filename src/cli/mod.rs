@@ -1,7 +1,6 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod add;
 pub mod apply;
 pub mod init;
 pub mod list;
@@ -15,8 +14,6 @@ use apply::ApplyArgs;
 use init::InitArgs;
 use list::ListArgs;
 use verify::VerifyArgs;
-
-use add::AddArgs;
 
 /// Licensa is a powerful CLI tool designed for seamless source code license management.
 ///
@@ -103,8 +100,4 @@ pub enum SubCommands {
     /// Get a list of available licenses
     #[command(name = "list")]
     List(ListArgs),
-
-    /// Add license header to one or more files
-    #[command(name = "add")]
-    Add(AddArgs),
 }
