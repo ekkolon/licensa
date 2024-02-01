@@ -115,6 +115,7 @@ pub struct Config {
     ///
     /// Defining patterns here is synonymous to adding them either to
     /// the `.gitignore` or `.licensaignore` file.
+    #[arg(long)]
     pub exclude: Option<Vec<String>>,
 }
 
