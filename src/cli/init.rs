@@ -1,130 +1,75 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use std::env::current_dir;
-
-use crate::config::resolve_workspace_config;
-use crate::config::Config;
+use crate::config::args::Config;
+use crate::config::{throw_when_workspace_config_exists, LicensaConfig};
+use crate::error::exit_io_error;
 use crate::license::LicensesManifest;
-use crate::schema::LicenseId;
-use crate::schema::LicenseNoticeFormat;
-use crate::schema::LicenseYear;
+use crate::schema::{LicenseId, LicenseNoticeFormat};
 
 use anyhow::Result;
 use clap::Args;
 use inquire::{Select, Text};
-use serde::Serialize;
 
-#[derive(Args, Debug)]
+use std::env::current_dir;
+use std::fs;
+
+#[derive(Args, Debug, Clone)]
 pub struct InitArgs {
-    /// License SPDX ID.
-    #[arg(short = 't', long = "type")]
-    pub license: Option<LicenseId>,
-
-    /// The copyright owner.
-    #[arg(short, long)]
-    pub owner: Option<String>,
-
-    /// The copyright year.
-    #[arg(short, long)]
-    pub year: Option<LicenseYear>,
-
-    /// The copyright header format to apply on each file to be licensed.
-    #[arg(
-        short,
-        long,
-        value_enum,
-        rename_all = "lower",
-        requires_if("compact", "compact_info")
-    )]
-    pub format: Option<LicenseNoticeFormat>,
-
     #[command(flatten)]
-    compact_template_args: CompactLicenseNoticeArgs,
+    config: Config,
 }
 
 impl InitArgs {
     pub fn to_config(&self) -> Result<Config> {
-        let workspace_root = current_dir()?;
-        let mut config = resolve_workspace_config(workspace_root)?;
-
-        config.update(Config {
-            license: self.license.clone(),
-            owner: self.owner.clone(),
-            format: self.format.clone(),
-            year: self.year.clone(),
-            license_location_determiner: self
-                .compact_template_args
-                .license_location_determiner
-                .clone(),
-            license_location: self.compact_template_args.license_location.clone(),
-            ..Default::default()
-        });
-
-        if config.license.is_none() {
-            // Prompt user with license selection
-        }
-
-        Ok(config)
+        Ok(Config::default())
     }
-}
-
-#[derive(Debug, Args, Serialize, Clone)]
-#[group(id = "compact_info", required = false, multiple = true)]
-pub struct CompactLicenseNoticeArgs {
-    /// The location where the LICENSE file can be found.
-    ///
-    /// Only takes effect in conjunction with 'compact' format.
-    #[arg(long = "location")]
-    #[serde(rename = "location")]
-    pub license_location: Option<String>,
-
-    /// The word that appears before the path to the license in a sentence (e.g. "in").
-    ///
-    /// Only takes effect in conjunction with 'compact' format.
-    #[arg(long = "determiner")]
-    #[serde(rename = "determiner")]
-    pub license_location_determiner: Option<String>,
 }
 
 pub fn run(args: &InitArgs) -> Result<()> {
-    let mut config = Config::from_defaults();
+    let workspace_root = current_dir()?;
 
-    if args.license.is_none() {
+    // Only proceed if the current working dir isn't a Licensa workspace already
+    if let Err(err) = throw_when_workspace_config_exists(true, &workspace_root) {
+        exit_io_error(err);
+    }
+
+    let mut config = args.config.clone().with_workspace_config(&workspace_root)?;
+
+    if config.license.is_none() {
         let license_id = prompt_license_selection()?;
         let _ = config.license.insert(license_id);
     }
-    if args.owner.is_none() {
+    if config.owner.is_none() {
         let owner = prompt_copyright_owner()?;
         let _ = config.owner.insert(owner);
     }
-    if args.format.is_none() {
+    if config.format.is_none() {
         let format = prompt_copyright_notice_format()?;
         if format == LicenseNoticeFormat::Compact {
-            if args
-                .compact_template_args
-                .license_location_determiner
-                .is_none()
-            {
-                let determiner = prompt_license_location_determiner()?;
-                let _ = config.license_location_determiner.insert(determiner);
+            if config.compact_format_args.location.is_none() {
+                let location = prompt_license_location()?;
+                let _ = config.compact_format_args.location.insert(location);
             }
 
-            if args.compact_template_args.license_location.is_none() {
-                let location = prompt_license_location()?;
-                let _ = config.license_location.insert(location);
+            if config.compact_format_args.determiner.is_none() {
+                let determiner = prompt_license_location_determiner()?;
+                let _ = config.compact_format_args.determiner.insert(determiner);
             }
         }
 
         let _ = config.format.insert(format);
     }
+
+    // FIXME: Invalid range error when using format YYYY-present
     // TODO: check year
 
     // TODO: Parse config to LicensaConfig
+    let config = serde_json::to_value(config)?;
+    let workspace_config: LicensaConfig = serde_json::from_value(config)?;
 
     // TODO: Write LicensaConfig json
-
-    println!("{config:?}");
+    workspace_config.generate_workspace_config(workspace_root, true)?;
 
     Ok(())
 }
