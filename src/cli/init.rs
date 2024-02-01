@@ -142,7 +142,7 @@ fn prompt_copyright_owner() -> Result<String> {
 }
 
 fn prompt_copyright_notice_format() -> Result<LicenseNoticeFormat> {
-    let options = vec!["Compact", "Full", "Spdx"];
+    let options = ["Compact", "Full", "Spdx"];
     let format = Select::new(
         "The format of the copyright notice to render",
         options.to_vec(),
