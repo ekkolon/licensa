@@ -1,23 +1,19 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
-use clap::Args;
-
-use std::{
-    env::current_dir,
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
-
-use crate::config::resolve_workspace_config;
-use crate::config::Config;
+use crate::config::{resolve_workspace_config, Config};
 use crate::copyright_notice::contains_copyright_notice;
 use crate::workspace::scan::{Scan, ScanConfig};
 use crate::workspace::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::workspace::work_tree::{FileTaskResponse, WorkTree};
 
+use anyhow::Result;
+use clap::Args;
 use rayon::prelude::*;
+
+use std::env::current_dir;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
     let mut runner_stats = WorkTreeRunnerStatistics::new("verify", "found");
@@ -28,30 +24,15 @@ pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
     // ========================================================
     // Scanning process
     // ========================================================
-
-    let scan_config = ScanConfig {
-        // FIXME: Add limit to workspace config
-        limit: 100,
-        // FIXME: Use exclude from workspace config
-        exclude: None,
-        root: workspace_root.clone(),
-    };
-    let scan = Scan::new(scan_config);
-
-    let candidates: Vec<PathBuf> = scan
-        .run()
-        .into_iter()
-        .par_bridge()
-        .map(|entry| entry.abspath)
-        .collect();
+    let candidates = scan_workspace(&workspace_root)?;
 
     runner_stats.set_items(candidates.len());
 
     // ========================================================
     // File processing
     // ========================================================
-
     let runner_stats = Arc::new(Mutex::new(runner_stats));
+
     let context = ScanContext {
         root: workspace_root,
         runner_stats: runner_stats.clone(),
@@ -62,7 +43,6 @@ pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
     worktree.run(candidates);
 
     // ========================================================
-
     // Print output statistics
     let mut runner_stats = runner_stats.lock().unwrap();
     runner_stats.set_status(WorkTreeRunnerStatus::Ok);
@@ -87,6 +67,31 @@ impl VerifyArgs {
 struct ScanContext {
     pub root: PathBuf,
     pub runner_stats: Arc<Mutex<WorkTreeRunnerStatistics>>,
+}
+
+// FIXME: Refactor to more generic, re-usable fn
+fn scan_workspace<P>(workspace_root: P) -> Result<Vec<PathBuf>>
+where
+    P: AsRef<Path>,
+{
+    let scan_config = ScanConfig {
+        // FIXME: Add limit to workspace config
+        limit: 100,
+        // FIXME: Use exclude from workspace config
+        exclude: None,
+        root: workspace_root.as_ref().to_path_buf(),
+    };
+
+    let scan = Scan::new(scan_config);
+
+    let candidates: Vec<PathBuf> = scan
+        .run()
+        .into_iter()
+        .par_bridge()
+        .map(|entry| entry.abspath)
+        .collect();
+
+    Ok(candidates)
 }
 
 fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) {
