@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::config::args::Config;
-use crate::config::{throw_when_workspace_config_exists, LicensaConfig};
+use crate::config::{throw_if_config_file_exists, LicensaConfig};
 use crate::error::exit_io_error;
 use crate::license::LicensesManifest;
 use crate::schema::{LicenseId, LicenseNoticeFormat};
@@ -28,13 +28,12 @@ impl InitArgs {
 pub fn run(args: &InitArgs) -> Result<()> {
     let workspace_root = current_dir()?;
 
-    // Only proceed if the current working dir isn't a Licensa workspace already
-    if let Err(err) = throw_when_workspace_config_exists(true, &workspace_root) {
+    if let Err(err) = throw_if_config_file_exists(false, &workspace_root) {
+        // Current directory is already a licensa workspace
         exit_io_error(err);
     }
 
     let mut config = args.config.clone().with_workspace_config(&workspace_root)?;
-
     if config.license.is_none() {
         let license_id = prompt_license_selection()?;
         let _ = config.license.insert(license_id);
@@ -63,12 +62,10 @@ pub fn run(args: &InitArgs) -> Result<()> {
     // FIXME: Invalid range error when using format YYYY-present
     // TODO: check year
 
-    // TODO: Parse config to LicensaConfig
-    let config = serde_json::to_value(config)?;
-    let workspace_config: LicensaConfig = serde_json::from_value(config)?;
+    let workspace_config = serde_json::to_value(config)?;
+    let workspace_config: LicensaConfig = serde_json::from_value(workspace_config)?;
+    workspace_config.generate_config_file(workspace_root, true)?;
 
-    // TODO: Write LicensaConfig json
-    workspace_config.generate_workspace_config(workspace_root, true)?;
 
     Ok(())
 }
