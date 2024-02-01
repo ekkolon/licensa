@@ -7,7 +7,7 @@ use std::{
     fs::File,
     io::Write,
     path::{Path, PathBuf},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 /// Returns the current year as determined by the OS.
@@ -105,14 +105,6 @@ macro_rules! loadfile {
 pub(crate) use loadfile;
 
 use crate::validator::is_valid_year;
-
-pub fn to_elapsed_secs(duration: Duration) -> String {
-    let mut secs_rounded = duration.as_secs_f32() * 100.0;
-    secs_rounded = f32::floor(secs_rounded);
-    secs_rounded /= 100.0;
-
-    format!("{secs_rounded}s")
-}
 
 #[cfg(test)]
 mod tests {

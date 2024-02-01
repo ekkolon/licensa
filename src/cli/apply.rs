@@ -4,10 +4,10 @@
 use std::borrow::Borrow;
 use std::env::current_dir;
 use std::fs;
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::Instant;
 
 use anyhow::Result;
 use clap::Args;
@@ -28,28 +28,29 @@ use crate::error;
 use crate::header::{extract_hash_bang, SourceHeaders};
 use crate::interpolation::interpolate;
 use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
-use crate::utils::to_elapsed_secs;
 use crate::workspace::scan::{get_path_suffix, Scan, ScanConfig};
-use crate::workspace::stats::ScanStats;
+use crate::workspace::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::workspace::work_tree::{FileTaskResponse, WorkTree};
 
 pub fn run(args: &ApplyArgs) -> Result<()> {
-    // only: DEBUG
-    let start_time = Instant::now();
+    let mut runner_stats = WorkTreeRunnerStatistics::new("apply", "modified");
 
-    let root = std::env::current_dir()?;
+    let workspace_root = std::env::current_dir()?;
+    let workspace_config = args.to_config()?;
 
     // ========================================================
     // Scanning process
     // ========================================================
 
     let scan_config = ScanConfig {
+        // FIXME: Add limit to workspace config
         limit: 100,
+        // FIXME: Use exclude from workspace config
         exclude: None,
-        root: root.clone(),
+        root: workspace_root.clone(),
     };
-
     let scan = Scan::new(scan_config);
+
     let candidates: Vec<PathBuf> = scan
         .run()
         .into_iter()
@@ -57,46 +58,37 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
         .map(|entry| entry.abspath)
         .collect();
 
-    let num_candidates = candidates.len();
-
-    // ========================================================
+    runner_stats.set_items(candidates.len());
 
     // ========================================================
     // File processing
     // ========================================================
 
     let cache = Cache::<HeaderTemplate>::new();
-    let stats = Arc::new(Mutex::new(ScanStats::new()));
+    let runner_stats = Arc::new(Mutex::new(runner_stats));
 
-    let workspace_config = args.to_config()?;
-
-    let template = resolve_license_notice_template(&workspace_config)?;
+    let template = resolve_license_notice_template(workspace_config)?;
     let template = Arc::new(Mutex::new(template));
 
     let context = ScanContext {
-        root,
+        root: workspace_root,
         cache: cache.clone(),
-        stats: stats.clone(),
+        runner_stats: runner_stats.clone(),
         template,
     };
 
     let mut worktree = WorkTree::new();
-    worktree.add_task(context, add_license);
+    worktree.add_task(context, apply_license_notice);
     worktree.run(candidates);
 
+    // ========================================================
     // Clear cache
     cache.clear();
 
-    // ========================================================
-
-    // only: DEBUG
-    let num_skipped = &stats.lock().unwrap().skipped;
-    let num_modified = num_candidates - num_skipped;
-    let num_failed = 0;
-    let result_type = "ok".green();
-
-    let duration = to_elapsed_secs(start_time.elapsed());
-    println!("\napply result: {result_type}. {num_modified} modified; {num_failed} failed; {num_skipped} ignored; finished in {duration}");
+    // Print output statistics
+    let mut runner_stats = runner_stats.lock().unwrap();
+    runner_stats.set_status(WorkTreeRunnerStatus::Ok);
+    runner_stats.print(true);
 
     Ok(())
 }
@@ -186,7 +178,7 @@ impl ApplyArgs {
 #[derive(Clone)]
 struct ScanContext {
     pub root: PathBuf,
-    pub stats: Arc<Mutex<ScanStats>>,
+    pub runner_stats: Arc<Mutex<WorkTreeRunnerStatistics>>,
     pub cache: Arc<Cache<HeaderTemplate>>,
     pub template: Arc<Mutex<String>>,
 }
@@ -233,16 +225,15 @@ where
     }
 }
 
-fn add_license(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
+fn apply_license_notice(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
+    // Ignore file that already contains a copyright notice
     if contains_copyright_notice(&response.content) {
-        // Skip further processing the file if it already contains a copyright notice
-        context.stats.lock().unwrap().skip();
-
+        context.runner_stats.lock().unwrap().add_ignore();
         return Ok(());
     }
 
-    let header = get_header_template(context, response);
-    let content = prepend_license(&header.template, &response.content);
+    let header = resolve_header_template(context, response);
+    let content = prepend_license_notice(&header.template, &response.content);
     fs::write(&response.path, content)?;
 
     let file_path = &response
@@ -252,14 +243,15 @@ fn add_license(context: &mut ScanContext, response: &FileTaskResponse) -> Result
         .to_str()
         .unwrap();
 
-    let result_type = "ok".green();
+    // Capture task success
+    context.runner_stats.lock().unwrap().add_action_count();
 
-    println!("apply {file_path} ... {result_type}");
+    print_task_success(file_path);
 
     Ok(())
 }
 
-fn prepend_license<H, F>(header: H, file_content: F) -> Vec<u8>
+fn prepend_license_notice<H, F>(header: H, file_content: F) -> Vec<u8>
 where
     H: AsRef<str>,
     F: AsRef<str>,
@@ -284,7 +276,10 @@ where
     content
 }
 
-fn get_header_template(context: &mut ScanContext, task: &FileTaskResponse) -> Arc<HeaderTemplate> {
+fn resolve_header_template(
+    context: &mut ScanContext,
+    task: &FileTaskResponse,
+) -> Arc<HeaderTemplate> {
     // FIXME: Compute cache id in FileTree
     let cache_id = get_path_suffix(&task.path);
 
@@ -306,4 +301,12 @@ fn get_header_template(context: &mut ScanContext, task: &FileTaskResponse) -> Ar
     }
 
     context.cache.get(&cache_id).unwrap()
+}
+
+fn print_task_success<P>(path: P)
+where
+    P: AsRef<Path>,
+{
+    let result_type = "ok".green();
+    println!("apply {} ... {result_type}", path.as_ref().display())
 }
