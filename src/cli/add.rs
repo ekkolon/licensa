@@ -3,14 +3,13 @@
 
 use std::env::current_dir;
 
-use crate::config::{resolve_workspace_config, Config};
+use crate::config::{resolve_workspace_config, Config, LicensaConfig};
+use crate::error;
 use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
-// use crate::validator;
-use anyhow::Result;
-use clap::{CommandFactory, Parser};
-use serde::{Deserialize, Serialize};
 
-use super::Cli;
+use anyhow::Result;
+use clap::Parser;
+use serde::Serialize;
 
 pub fn run(args: &AddArgs) -> Result<()> {
     let config = args.to_config()?;
@@ -45,19 +44,21 @@ pub struct AddArgs {
     /// The word that appears before the path to the license in a sentence (e.g. "in").
     ///
     /// Only takes effect in conjunction with 'compact' format.
-    #[arg(long, required = false, group = "compact_info")]
-    pub determiner: Option<String>,
+    #[arg(long = "determiner", required = false, group = "compact_info")]
+    #[serde(rename = "determiner")]
+    pub license_location_determiner: Option<String>,
 
     /// The location where the LICENSE file can be found.
     ///
     /// Only takes effect in conjunction with 'compact' format.
-    #[arg(long, required = false, group = "compact_info")]
-    pub location: Option<String>,
+    #[arg(long = "location", required = false, group = "compact_info")]
+    #[serde(rename = "location")]
+    pub license_location: Option<String>,
 }
 
 impl AddArgs {
     // Merge self with config::Config
-    fn to_config(&self) -> Result<AddCommandConfig> {
+    fn to_config(&self) -> Result<LicensaConfig> {
         let workspace_root = current_dir()?;
         let mut config = resolve_workspace_config(workspace_root)?;
 
@@ -66,69 +67,31 @@ impl AddArgs {
             owner: self.owner.clone(),
             format: self.format.clone(),
             year: self.year.clone(),
+            license_location_determiner: self.license_location_determiner.clone(),
+            license_location: self.license_location.clone(),
             ..Default::default()
         });
 
         if config.license.is_none() {
-            missing_required_arg_error("-t, --type <LICENSE>")
+            error::missing_required_arg_error("-t, --type <LICENSE>")
         }
         if config.owner.is_none() {
-            missing_required_arg_error("-o, --owner <OWNER>")
+            error::missing_required_arg_error("-o, --owner <OWNER>")
         }
         if config.format.is_none() {
-            missing_required_arg_error("-f, --format <FORMAT>")
-        }
-        if config.format.is_none() {
-            missing_required_arg_error("-y, --year <YEAR>")
+            error::missing_required_arg_error("-f, --format <FORMAT>")
         }
 
-        let opts = serde_json::to_value(AddArgs {
-            format: config.format,
-            license: config.license,
-            owner: config.owner,
-            year: config.year,
-            determiner: self.determiner.clone(),
-            location: self.location.clone(),
-        });
-
-        if let Err(err) = opts.as_ref() {
-            let err_msg = format!("Failed to serialize `add` command arguemnts.\n {}", err);
-            Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, err_msg)
-                .exit();
+        let args = serde_json::to_value(config);
+        if let Err(err) = args.as_ref() {
+            error::serialize_args_error("add", err)
         }
 
-        let config = serde_json::from_value::<AddCommandConfig>(opts.unwrap());
-
+        let config = serde_json::from_value::<LicensaConfig>(args.unwrap());
         if let Err(err) = config.as_ref() {
-            let err_msg = format!("Failed to deserialize `add` command arguemnts.\n {}", err);
-            Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, err_msg)
-                .exit();
+            error::deserialize_args_error("add", err)
         }
 
         Ok(config.unwrap())
     }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct AddCommandConfig {
-    pub license: LicenseId,
-    pub owner: String,
-    pub year: LicenseYear,
-    pub format: LicenseNoticeFormat,
-    pub determiner: Option<String>,
-    pub location: Option<String>,
-}
-
-fn missing_required_arg_error<T>(arg: T)
-where
-    T: AsRef<str>,
-{
-    Cli::command()
-        .error(
-            clap::error::ErrorKind::MissingRequiredArgument,
-            format!("Missing required argument {}", arg.as_ref()),
-        )
-        .exit()
 }

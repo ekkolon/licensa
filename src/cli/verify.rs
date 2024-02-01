@@ -1,45 +1,85 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use clap::Args;
-
-#[derive(Args, Debug)]
-pub struct VerifyArgs {}
-
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
-
+use crate::config::{resolve_workspace_config, Config};
 use crate::copyright_notice::contains_copyright_notice;
 use crate::workspace::scan::{Scan, ScanConfig};
-use crate::workspace::stats::ScanStats;
+use crate::workspace::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::workspace::work_tree::{FileTaskResponse, WorkTree};
-use crate::{helpers::channel_duration::ChannelDuration, logger::notice};
-use colored::Colorize;
 
+use anyhow::Result;
+use clap::Args;
 use rayon::prelude::*;
 
-#[derive(Clone)]
-struct ScanContext {
-    pub root: PathBuf,
-    pub stats: Arc<Mutex<ScanStats>>,
-}
+use std::env::current_dir;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
-    // only: DEBUG
-    let mut channel_duration = ChannelDuration::new();
+    let mut runner_stats = WorkTreeRunnerStatistics::new("verify", "found");
 
-    let root = std::env::current_dir()?;
+    let workspace_root = std::env::current_dir()?;
+    let workspace_config = args.to_config()?;
 
     // ========================================================
     // Scanning process
     // ========================================================
+    let candidates = scan_workspace(&workspace_root)?;
 
+    runner_stats.set_items(candidates.len());
+
+    // ========================================================
+    // File processing
+    // ========================================================
+    let runner_stats = Arc::new(Mutex::new(runner_stats));
+
+    let context = ScanContext {
+        root: workspace_root,
+        runner_stats: runner_stats.clone(),
+    };
+
+    let mut worktree = WorkTree::new();
+    worktree.add_task(context, read_entry);
+    worktree.run(candidates);
+
+    // ========================================================
+    // Print output statistics
+    let mut runner_stats = runner_stats.lock().unwrap();
+    runner_stats.set_status(WorkTreeRunnerStatus::Ok);
+    runner_stats.print(true);
+
+    Ok(())
+}
+
+#[derive(Args, Debug)]
+pub struct VerifyArgs {}
+
+impl VerifyArgs {
+    // Merge self with config::Config
+    fn to_config(&self) -> Result<Config> {
+        let workspace_root = current_dir()?;
+        let config = resolve_workspace_config(workspace_root)?;
+        Ok(config)
+    }
+}
+
+#[derive(Clone)]
+struct ScanContext {
+    pub root: PathBuf,
+    pub runner_stats: Arc<Mutex<WorkTreeRunnerStatistics>>,
+}
+
+// FIXME: Refactor to more generic, re-usable fn
+fn scan_workspace<P>(workspace_root: P) -> Result<Vec<PathBuf>>
+where
+    P: AsRef<Path>,
+{
     let scan_config = ScanConfig {
+        // FIXME: Add limit to workspace config
         limit: 100,
+        // FIXME: Use exclude from workspace config
         exclude: None,
-        root: root.clone(),
+        root: workspace_root.as_ref().to_path_buf(),
     };
 
     let scan = Scan::new(scan_config);
@@ -51,48 +91,14 @@ pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
         .map(|entry| entry.abspath)
         .collect();
 
-    let num_candidates = candidates.len();
-
-    // ========================================================
-
-    // ========================================================
-    // File processing
-    // ========================================================
-
-    let stats = Arc::new(Mutex::new(ScanStats::new()));
-
-    let context = ScanContext {
-        root,
-        stats: stats.clone(),
-    };
-
-    let mut worktree = WorkTree::new();
-    worktree.add_task(context, read_entry);
-    worktree.run(candidates);
-
-    // ========================================================
-
-    // only: DEBUG
-    channel_duration.drop_channel();
-
-    let task_duration = &channel_duration.as_secs_rounded();
-    notice!(format!(
-        "Verifying license headers took {}secs for {:?} files",
-        task_duration, num_candidates
-    ));
-
-    let num_candidates_skipped = &stats.lock().unwrap().skipped;
-    let num_candidates_without_license = num_candidates - num_candidates_skipped;
-    notice!(format!(
-        "Missing: {}   Skipped: {}",
-        num_candidates_without_license, num_candidates_skipped
-    ));
-
-    Ok(())
+    Ok(candidates)
 }
 
 fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) {
+    let mut runner_stats = context.runner_stats.lock().unwrap();
     if contains_copyright_notice(&response.content) {
-        context.stats.lock().unwrap().skip();
+        runner_stats.add_action_count();
+    } else {
+        runner_stats.add_ignore();
     }
 }
