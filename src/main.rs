@@ -51,9 +51,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         SubCommands::List(args) => {
             cli::list::run(args);
         }
-        SubCommands::Add(args) => {
-            cli::add::run(args)?;
-        }
     };
 
     Ok(())
