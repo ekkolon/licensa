@@ -100,8 +100,6 @@ pub fn run(args: &InitArgs) -> Result<()> {
     }
     if args.format.is_none() {
         let format = prompt_copyright_notice_format()?;
-        let _ = config.format.insert(format.clone());
-
         if format == LicenseNoticeFormat::Compact {
             if args
                 .compact_template_args
@@ -117,6 +115,8 @@ pub fn run(args: &InitArgs) -> Result<()> {
                 let _ = config.license_location.insert(location);
             }
         }
+
+        let _ = config.format.insert(format);
     }
     // TODO: check year
 
