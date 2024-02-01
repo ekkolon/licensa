@@ -168,7 +168,11 @@ pub enum LicenseNoticeFormat {
 
 impl fmt::Display for LicenseNoticeFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        match *self {
+            Self::Compact => write!(f, "{}", Self::Compact),
+            Self::Full => write!(f, "{}", Self::Full),
+            Self::Spdx => write!(f, "{}", Self::Spdx),
+        }
     }
 }
 
