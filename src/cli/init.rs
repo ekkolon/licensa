@@ -12,7 +12,6 @@ use clap::Args;
 use inquire::{Select, Text};
 
 use std::env::current_dir;
-use std::fs;
 
 #[derive(Args, Debug, Clone)]
 pub struct InitArgs {
