@@ -9,13 +9,14 @@ pub struct VerifyArgs {}
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
-use crate::copyright_notice::contains_copyright_notice;
+use crate::logger::notice;
 use crate::workspace::scan::{Scan, ScanConfig};
 use crate::workspace::stats::ScanStats;
 use crate::workspace::work_tree::{FileTaskResponse, WorkTree};
-use crate::{helpers::channel_duration::ChannelDuration, logger::notice};
+use crate::{copyright_notice::contains_copyright_notice, utils::to_elapsed_secs};
 use colored::Colorize;
 
 use rayon::prelude::*;
@@ -28,7 +29,7 @@ struct ScanContext {
 
 pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
     // only: DEBUG
-    let mut channel_duration = ChannelDuration::new();
+    let start_time = Instant::now();
 
     let root = std::env::current_dir()?;
 
@@ -73,13 +74,8 @@ pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
     // ========================================================
 
     // only: DEBUG
-    channel_duration.drop_channel();
-
-    let task_duration = &channel_duration.as_secs_rounded();
-    notice!(format!(
-        "Verifying license headers took {}secs for {:?} files",
-        task_duration, num_candidates
-    ));
+    let duration = to_elapsed_secs(start_time.elapsed());
+    notice!(format!("Process took {}", duration));
 
     let num_candidates_skipped = &stats.lock().unwrap().skipped;
     let num_candidates_without_license = num_candidates - num_candidates_skipped;

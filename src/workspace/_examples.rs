@@ -2,6 +2,7 @@ use std::{
     fs,
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use crate::{
@@ -10,11 +11,13 @@ use crate::{
         contains_copyright_notice, CompactCopyrightNotice, COMPACT_COPYRIGHT_NOTICE,
     },
     header::{extract_hash_bang, SourceHeaders},
-    helpers::channel_duration::ChannelDuration,
     interpolation::interpolate,
+    logger::notice,
+    utils::to_elapsed_secs,
 };
 
 use anyhow::Result;
+use colored::Colorize;
 use rayon::prelude::*;
 use serde::Serialize;
 
@@ -43,7 +46,7 @@ struct ScanContext {
 
 pub fn example_scan_parallel() -> anyhow::Result<()> {
     // only: DEBUG
-    let mut channel_duration = ChannelDuration::new();
+    let start_time = Instant::now();
 
     let root = std::env::current_dir()?;
 
@@ -109,9 +112,8 @@ pub fn example_scan_parallel() -> anyhow::Result<()> {
     // ========================================================
 
     // only: DEBUG
-    channel_duration.drop_channel();
-    let task_duration = &channel_duration.get_duration().as_secs_f32();
-    println!("Took {} for {:?} files", task_duration, num_files);
+    let duration = to_elapsed_secs(start_time.elapsed());
+    notice!(format!("Process took {}", duration));
 
     println!("After run - Cache size: {}", &cache.size());
 

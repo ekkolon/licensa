@@ -10,7 +10,6 @@ mod copyright_notice;
 mod env;
 mod error;
 mod header;
-mod helpers;
 mod interpolation;
 mod license;
 mod logger;

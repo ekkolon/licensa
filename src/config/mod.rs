@@ -12,11 +12,31 @@ use std::fs;
 use std::path::Path;
 
 use crate::cli::Cli;
+use crate::error;
 use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
 use crate::utils::{self, check_any_file_exists};
 
 const DEFAULT_CONFIG_FILENAME: &str = ".licensarc";
 const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct LicensaConfig {
+    #[serde(rename(serialize = "fullname"))]
+    pub owner: String,
+    pub license: LicenseId,
+    pub format: LicenseNoticeFormat,
+    pub exclude: Vec<String>,
+    pub year: Option<LicenseYear>,
+    pub email: Option<String>,
+    pub project: Option<String>,
+    pub project_url: Option<url::Url>,
+    #[serde(rename = "location")]
+    pub license_location: Option<String>,
+    #[serde(rename = "determiner")]
+    pub license_location_determiner: Option<String>,
+}
 
 /// Represents the container for a Licensa config file that may be
 /// included in root directory of a software project.
@@ -48,7 +68,7 @@ pub struct Config {
     pub year: Option<LicenseYear>,
 
     /// The full name of the copyright holder.
-    #[serde(rename(serialize = "fullname"))]
+    // #[serde(rename(serialize = "fullname"))]
     pub owner: Option<String>,
 
     /// The remote URL where the project lives.
@@ -99,6 +119,18 @@ pub struct Config {
     /// Defining patterns here is synonymous to adding them either to
     /// the `.gitignore` or `.licensaignore` file.
     pub exclude: Option<Vec<String>>,
+
+    /// The location where the LICENSE file can be found.
+    ///
+    /// Only takes effect in conjunction with 'compact' format.
+    #[serde(rename = "location")]
+    pub license_location: Option<String>,
+
+    /// The word that appears before the path to the license in a sentence (e.g. "in").
+    ///
+    /// Only takes effect in conjunction with 'compact' format.
+    #[serde(rename = "determiner")]
+    pub license_location_determiner: Option<String>,
 }
 
 impl Config {
@@ -117,6 +149,8 @@ impl Config {
             project: empty.project().map(|s| s.to_owned()),
             project_url: empty.project_url().map(|s| s.to_owned()),
             year: empty.year().map(|s| s.to_owned()),
+            license_location: empty.license_location().map(|s| s.to_owned()),
+            license_location_determiner: empty.license_location_determiner().map(|s| s.to_owned()),
         }
     }
 
@@ -150,6 +184,12 @@ impl Config {
         if let Some(year) = source.year.as_ref() {
             self.year = Some(year.to_owned())
         }
+        if let Some(license_location) = source.license_location.as_ref() {
+            self.license_location = Some(license_location.to_owned())
+        }
+        if let Some(license_location_determiner) = source.license_location_determiner.as_ref() {
+            self.license_location_determiner = Some(license_location_determiner.to_owned())
+        }
     }
 
     pub fn email(&self) -> Option<&str> {
@@ -182,6 +222,26 @@ impl Config {
 
     pub fn year(&self) -> Option<&LicenseYear> {
         self.year.as_ref()
+    }
+
+    pub fn license_location(&self) -> Option<&str> {
+        self.project.as_deref()
+    }
+
+    pub fn license_location_determiner(&self) -> Option<&str> {
+        self.license_location_determiner.as_deref()
+    }
+
+    pub fn check_required_fields(&self) {
+        if self.license.is_none() {
+            error::missing_required_arg_error("-t, --type <LICENSE>")
+        }
+        if self.owner.is_none() {
+            error::missing_required_arg_error("-o, --owner <OWNER>")
+        }
+        if self.format.is_none() {
+            error::missing_required_arg_error("-f, --format <FORMAT>")
+        }
     }
 
     pub fn parse_config_file() -> Result<Config> {
@@ -433,6 +493,8 @@ mod tests {
             format: Some(LicenseNoticeFormat::Spdx),
             license: Some(LicenseId("MIT".to_string())),
             year: Some(LicenseYear::single_year(2024)),
+            license_location: None,
+            license_location_determiner: None,
         };
 
         // Test writing the config file
@@ -479,6 +541,8 @@ mod tests {
             format: Some(LicenseNoticeFormat::Spdx),
             license: Some(LicenseId("MIT".to_string())),
             year: Some(LicenseYear::single_year(2024)),
+            license_location: None,
+            license_location_determiner: None,
         };
 
         // Test writing the config file when it already exists
