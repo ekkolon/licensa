@@ -1,14 +1,31 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use anyhow::Result;
+#[cfg(test)]
+pub mod testing;
+
+pub mod validate;
+
+use validate::is_valid_year;
+
+use anyhow::{anyhow, Result};
 use chrono::{Datelike, TimeZone};
+
 use std::{
     fs::File,
     io::Write,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+#[inline]
+pub fn verify_dir<P: AsRef<Path>>(path: P) -> Result<()> {
+    if !path.as_ref().is_dir() {
+        return Err(anyhow!("{} is not a directory", path.as_ref().display()));
+    }
+
+    Ok(())
+}
 
 /// Returns the current year as determined by the OS.
 ///
@@ -82,7 +99,7 @@ pub fn write_json<P: AsRef<Path>>(file_path: P, json_data: &serde_json::Value) -
 /// # Panics
 ///
 /// This function does not intentionally panic
-pub fn check_any_file_exists<P>(path: P, filenames: &[&str]) -> Option<PathBuf>
+pub fn resolve_any_path<P>(path: P, filenames: &[&str]) -> Option<PathBuf>
 where
     P: AsRef<Path>,
 {
@@ -103,8 +120,6 @@ macro_rules! loadfile {
     };
 }
 pub(crate) use loadfile;
-
-use crate::validator::is_valid_year;
 
 #[cfg(test)]
 mod tests {
@@ -236,7 +251,7 @@ mod tests {
         File::create(&sample_file_path).expect("Failed to create sample file");
 
         // Test when the single file exists
-        let result = check_any_file_exists(base_path, &[sample_filename]);
+        let result = resolve_any_path(base_path, &[sample_filename]);
         assert_eq!(result, Some(sample_file_path.clone()));
 
         // Cleanup
@@ -261,7 +276,7 @@ mod tests {
         }
 
         // Test when multiple files exist
-        let result = check_any_file_exists(base_path, &filenames);
+        let result = resolve_any_path(base_path, &filenames);
         assert!(result.is_some());
         assert!(filenames.iter().any(|&filename| {
             result
@@ -280,7 +295,7 @@ mod tests {
         let base_path = temp_dir.path();
 
         // Test when none of the files exist
-        let result = check_any_file_exists(base_path, &["nonexistent_file.txt"]);
+        let result = resolve_any_path(base_path, &["nonexistent_file.txt"]);
         assert_eq!(result, None);
     }
 }

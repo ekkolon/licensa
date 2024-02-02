@@ -1,11 +1,11 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use super::read_config_file;
-use crate::schema::{LicenseId, LicenseNoticeFormat, LicenseYear};
+use crate::ops::workspace::find_workspace_config;
+use crate::schema::{LicenseHeaderFormat, LicenseId, LicenseYear};
 
 use anyhow::{anyhow, Result};
-use clap::{Args, Parser};
+use clap::Args;
 use serde::{Deserialize, Serialize};
 
 use std::path::Path;
@@ -29,7 +29,7 @@ use std::path::Path;
 ///
 ///   - `.licensarc`
 ///   - `.licensarc.json`
-#[derive(Debug, Serialize, Deserialize, Default, Parser, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Args)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields, default)]
 pub struct Config {
@@ -105,7 +105,7 @@ pub struct Config {
         rename_all = "lower",
         requires_if("compact", "compact_format")
     )]
-    pub format: Option<LicenseNoticeFormat>,
+    pub format: Option<LicenseHeaderFormat>,
 
     #[command(flatten)]
     #[serde(flatten)]
@@ -183,8 +183,8 @@ impl Config {
         self.exclude.as_ref().map(|v| v.as_ref()).unwrap_or(&[])
     }
 
-    pub fn format(&self) -> &LicenseNoticeFormat {
-        self.format.as_ref().unwrap_or(&LicenseNoticeFormat::Spdx)
+    pub fn format(&self) -> &LicenseHeaderFormat {
+        self.format.as_ref().unwrap_or(&LicenseHeaderFormat::Spdx)
     }
 
     pub fn holder(&self) -> Option<&str> {
@@ -222,7 +222,7 @@ impl Config {
     {
         let mut merge_config = Config::from_defaults();
         merge_config.update(self.clone());
-        Self::from_workspace_config(workspace_root, Some(merge_config))
+        Self::from_workspace_config(workspace_root, None)
     }
 
     /// Try to resolve workspace configuration and merge those with defaults.
@@ -231,16 +231,15 @@ impl Config {
         T: AsRef<Path>,
     {
         let mut config = initial.unwrap_or(Config::from_defaults());
-
-        // Read config file, if it exists and update config
-        let config_file = read_config_file(workspace_root.as_ref());
-        if let Ok(parsed_config) = config_file {
-            let parsed_config = serde_json::from_str::<Config>(&parsed_config);
-            if let Err(err) = parsed_config {
+        let ws = find_workspace_config(workspace_root.as_ref());
+        if let Ok(ws) = ws {
+            let parsed = serde_json::from_str::<Config>(&ws);
+            if let Err(err) = parsed {
                 // Config file found but failed parsing.
                 return Err(anyhow!("Failed to parse Licensa config file.\n {}", err));
             }
-            config.update(parsed_config.unwrap());
+
+            config.update(parsed.unwrap());
         }
 
         Ok(config)

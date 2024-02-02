@@ -1,11 +1,11 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::config::args::Config;
-use crate::copyright_notice::contains_copyright_notice;
-use crate::workspace::scan::{Scan, ScanConfig};
-use crate::workspace::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
-use crate::workspace::work_tree::{FileTaskResponse, WorkTree};
+use crate::config::Config;
+use crate::ops::scan::{Scan, ScanConfig};
+use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
+use crate::ops::work_tree::{FileTaskResponse, WorkTree};
+use crate::template::has_copyright_notice;
 
 use anyhow::Result;
 use clap::Args;
@@ -90,7 +90,7 @@ where
 
 fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) {
     let mut runner_stats = context.runner_stats.lock().unwrap();
-    if contains_copyright_notice(&response.content) {
+    if has_copyright_notice(&response.content) {
         runner_stats.add_action_count();
     } else {
         runner_stats.add_ignore();

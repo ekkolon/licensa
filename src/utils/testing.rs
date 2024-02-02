@@ -1,4 +1,5 @@
-//! Test utils
+// Copyright 2024 Nelson Dominguez
+// SPDX-License-Identifier: Apache-2.0
 
 use std::{
     fs::File,
