@@ -41,7 +41,7 @@ impl ApplyArgs {
         let config = self.config.clone().with_workspace_config(workspace_root)?;
 
         // Verify required fields such es `license`, `owner` and `format` are set.
-        self.check_required_fields();
+        Self::check_required_fields(&config);
 
         let args = serde_json::to_value(config);
         if let Err(err) = args.as_ref() {
@@ -56,14 +56,14 @@ impl ApplyArgs {
         Ok(config.unwrap())
     }
 
-    fn check_required_fields(&self) {
-        if self.config.license.is_none() {
+    fn check_required_fields(config: &Config) {
+        if config.license.is_none() {
             error::missing_required_arg_error("-t, --type <LICENSE>")
         }
-        if self.config.owner.is_none() {
+        if config.owner.is_none() {
             error::missing_required_arg_error("-o, --owner <OWNER>")
         }
-        if self.config.format.is_none() {
+        if config.format.is_none() {
             error::missing_required_arg_error("-f, --format <FORMAT>")
         }
     }
