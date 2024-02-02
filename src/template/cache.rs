@@ -11,30 +11,7 @@ pub trait Cachable {
 
 type CacheInner<T> = Arc<Mutex<HashMap<String, Arc<T>>>>;
 
-/// Represents the caching system for arbitrary items.
-///
-/// # Examples
-///
-/// ```no_run
-/// // Create a new Cache
-/// let cache = Cache::<TemplateItem>::new();
-///
-/// // Example: Insert an item into the cache
-/// let extension = ".rs";
-/// let template = "Your license template here";
-/// let item = TemplateItem {
-///     extension: extension.into(),
-///     template: template.into(),
-/// };
-/// cache.add(item);
-///
-/// // Example: Retrieve an item from the cache
-/// if let Some(cached_item) = cache.get(extension) {
-///     println!("Found cached item for {}: {:?}", extension, cached_item);
-/// } else {
-///     println!("Item not found in the cache for {}", extension);
-/// }
-/// ```
+/// A simple caching system for arbitrary items.
 pub struct Cache<T>
 where
     T: Clone + Cachable,

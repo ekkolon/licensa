@@ -1,6 +1,9 @@
-use std::{fmt, time::Instant};
+// Copyright 2024 Nelson Dominguez
+// SPDX-License-Identifier: Apache-2.0
 
 use colored::Colorize;
+
+use std::{fmt, time::Instant};
 
 pub struct WorkTreeRunnerStatistics {
     ignored: usize,

@@ -1,20 +1,20 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::cache::{Cachable, Cache};
-use crate::config::args::Config;
-use crate::config::LicensaConfig;
-use crate::copyright_notice::{
-    contains_copyright_notice, CompactCopyrightNotice, SpdxCopyrightNotice,
-    COMPACT_COPYRIGHT_NOTICE, SPDX_COPYRIGHT_NOTICE,
-};
+use crate::config::Config;
 use crate::error;
-use crate::header::{extract_hash_bang, SourceHeaders};
-use crate::interpolation::interpolate;
-use crate::schema::LicenseNoticeFormat;
-use crate::workspace::scan::{get_path_suffix, Scan, ScanConfig};
-use crate::workspace::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
-use crate::workspace::work_tree::{FileTaskResponse, WorkTree};
+use crate::ops::scan::{get_path_suffix, Scan, ScanConfig};
+use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
+use crate::ops::work_tree::{FileTaskResponse, WorkTree};
+use crate::schema::LicenseHeaderFormat;
+use crate::template::cache::{Cachable, Cache};
+use crate::template::copyright::{
+    CompactCopyrightNotice, SpdxCopyrightNotice, COMPACT_COPYRIGHT_NOTICE, SPDX_COPYRIGHT_NOTICE,
+};
+use crate::template::has_copyright_notice;
+use crate::template::header::{extract_hash_bang, SourceHeaders};
+use crate::template::interpolation::interpolate;
+use crate::workspace::LicensaWorkspace;
 
 use anyhow::Result;
 use clap::Parser;
@@ -36,19 +36,19 @@ pub struct ApplyArgs {
 
 impl ApplyArgs {
     // Merge self with config::Config
-    fn to_config(&self) -> Result<LicensaConfig> {
+    fn to_config(&self) -> Result<LicensaWorkspace> {
         let workspace_root = current_dir()?;
         let config = self.config.clone().with_workspace_config(workspace_root)?;
 
         // Verify required fields such es `license`, `owner` and `format` are set.
-        self.check_required_fields();
+        Self::check_required_fields(&config);
 
         let args = serde_json::to_value(config);
         if let Err(err) = args.as_ref() {
             error::serialize_args_error("apply", err)
         }
 
-        let config = serde_json::from_value::<LicensaConfig>(args.unwrap());
+        let config = serde_json::from_value::<LicensaWorkspace>(args.unwrap());
         if let Err(err) = config.as_ref() {
             error::deserialize_args_error("apply", err)
         }
@@ -56,14 +56,14 @@ impl ApplyArgs {
         Ok(config.unwrap())
     }
 
-    fn check_required_fields(&self) {
-        if self.config.license.is_none() {
+    fn check_required_fields(config: &Config) {
+        if config.license.is_none() {
             error::missing_required_arg_error("-t, --type <LICENSE>")
         }
-        if self.config.owner.is_none() {
+        if config.owner.is_none() {
             error::missing_required_arg_error("-o, --owner <OWNER>")
         }
-        if self.config.format.is_none() {
+        if config.format.is_none() {
             error::missing_required_arg_error("-f, --format <FORMAT>")
         }
     }
@@ -161,12 +161,12 @@ where
 
 fn resolve_license_notice_template<C>(config: C) -> Result<String>
 where
-    C: Borrow<LicensaConfig>,
+    C: Borrow<LicensaWorkspace>,
 {
-    let config = config.borrow() as &LicensaConfig;
+    let config = config.borrow() as &LicensaWorkspace;
 
     match config.format {
-        LicenseNoticeFormat::Compact => interpolate!(
+        LicenseHeaderFormat::Compact => interpolate!(
             COMPACT_COPYRIGHT_NOTICE,
             CompactCopyrightNotice {
                 year: 2024,
@@ -176,7 +176,7 @@ where
                 location: config.location.clone().unwrap(),
             }
         ),
-        LicenseNoticeFormat::Full | LicenseNoticeFormat::Spdx => {
+        LicenseHeaderFormat::Spdx => {
             interpolate!(
                 SPDX_COPYRIGHT_NOTICE,
                 SpdxCopyrightNotice {
@@ -191,7 +191,7 @@ where
 
 fn apply_license_notice(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
     // Ignore file that already contains a copyright notice
-    if contains_copyright_notice(&response.content) {
+    if has_copyright_notice(&response.content) {
         context.runner_stats.lock().unwrap().add_ignore();
         return Ok(());
     }

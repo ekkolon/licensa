@@ -1,17 +1,19 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::config::args::Config;
-use crate::config::{throw_if_config_file_exists, LicensaConfig};
+use crate::config::Config;
 use crate::error::exit_io_error;
 use crate::license::LicensesManifest;
-use crate::schema::{LicenseId, LicenseNoticeFormat};
+use crate::ops::workspace::{save_workspace_config, throw_workspace_config_exists};
+use crate::schema::{LicenseHeaderFormat, LicenseId};
+use crate::workspace::LicensaWorkspace;
 
 use anyhow::Result;
 use clap::Args;
 use inquire::{Select, Text};
 
 use std::env::current_dir;
+use std::fs;
 
 #[derive(Args, Debug, Clone)]
 pub struct InitArgs {
@@ -26,14 +28,17 @@ impl InitArgs {
 }
 
 pub fn run(args: &InitArgs) -> Result<()> {
-    let workspace_root = current_dir()?;
+    let workspace_root = current_dir()?.join("tmp");
+    fs::create_dir_all(&workspace_root)?;
 
-    if let Err(err) = throw_if_config_file_exists(false, &workspace_root) {
-        // Current directory is already a licensa workspace
+    if let Err(err) = throw_workspace_config_exists(&workspace_root) {
         exit_io_error(err);
     }
 
     let mut config = args.config.clone().with_workspace_config(&workspace_root)?;
+
+    println!("{:?}", &config);
+
     if config.license.is_none() {
         let license_id = prompt_license_selection()?;
         let _ = config.license.insert(license_id);
@@ -44,7 +49,7 @@ pub fn run(args: &InitArgs) -> Result<()> {
     }
     if config.format.is_none() {
         let format = prompt_copyright_notice_format()?;
-        if format == LicenseNoticeFormat::Compact {
+        if format == LicenseHeaderFormat::Compact {
             if config.compact_format_args.location.is_none() {
                 let location = prompt_license_location()?;
                 let _ = config.compact_format_args.location.insert(location);
@@ -63,9 +68,8 @@ pub fn run(args: &InitArgs) -> Result<()> {
     // TODO: check year
 
     let workspace_config = serde_json::to_value(config)?;
-    let workspace_config: LicensaConfig = serde_json::from_value(workspace_config)?;
-    workspace_config.generate_config_file(workspace_root, true)?;
-
+    let workspace_config: LicensaWorkspace = serde_json::from_value(workspace_config)?;
+    save_workspace_config(workspace_root, workspace_config)?;
 
     Ok(())
 }
@@ -82,7 +86,7 @@ fn prompt_copyright_owner() -> Result<String> {
     Ok(owner)
 }
 
-fn prompt_copyright_notice_format() -> Result<LicenseNoticeFormat> {
+fn prompt_copyright_notice_format() -> Result<LicenseHeaderFormat> {
     let options = ["Compact", "Full", "Spdx"];
     let format = Select::new(
         "The format of the copyright notice to render",
@@ -91,7 +95,7 @@ fn prompt_copyright_notice_format() -> Result<LicenseNoticeFormat> {
     // .with_starting_cursor(2)
     .prompt()?;
 
-    Ok(LicenseNoticeFormat::from(format))
+    Ok(LicenseHeaderFormat::from(format))
 }
 
 fn prompt_license_location() -> Result<String> {
