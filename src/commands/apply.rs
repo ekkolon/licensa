@@ -191,7 +191,7 @@ where
 
 fn apply_license_notice(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
     // Ignore file that already contains a copyright notice
-    if has_copyright_notice(&response.content.as_bytes()) {
+    if has_copyright_notice(response.content.as_bytes()) {
         context.runner_stats.lock().unwrap().add_ignore();
         return Ok(());
     }
