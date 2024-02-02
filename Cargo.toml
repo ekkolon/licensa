@@ -46,7 +46,6 @@ inquire = "0.6.2"
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10", features = [ "vendored" ] }
-openssl-sys = "0.9"
 
 [badges]
 maintenance = { status = "experimental" }
