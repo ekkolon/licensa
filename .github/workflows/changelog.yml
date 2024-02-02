@@ -1,8 +1,7 @@
 name: Changelog
 on:
   release:
-    types:
-      - created
+    types: [published]
 jobs:
   changelog:
     runs-on: ubuntu-latest
