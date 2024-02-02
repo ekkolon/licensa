@@ -1,16 +1,14 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::template::header::SourceHeaders;
+
 use anyhow::Result;
 use crossbeam_channel::Receiver;
-// use rayon::prelude::*;
-
 use ignore::{DirEntry, WalkBuilder, WalkState};
 
 use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
-
-use crate::header::SourceHeaders;
 
 /// Default filename for the `Licensa` CLI ignore patterns.
 const LICENSA_IGNORE_FILE: &str = ".licensaignore";
@@ -50,32 +48,6 @@ impl Scan {
     /// # Errors
     ///
     /// Returns an error if there are issues with building or running the parallel walker.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use licensa::scanner:ScanConfig;
-    ///
-    /// // Create a ScanConfig with the necessary parameters
-    /// let config = ScanConfig {
-    ///     // ... (initialize your config)
-    /// };
-    ///
-    /// // Create a Scan instance with the provided config
-    /// let scan = licensa::scanner::Scan::new(config);
-    ///
-    /// // Run the scan in parallel and obtain the receiver
-    /// if let Ok(receiver) = scan.run_parallel() {
-    ///     // Iterate over received file entries
-    ///     for entry in receiver.iter() {
-    ///         // Process the file entry as needed
-    ///         println!("Received file entry: {:?}", entry);
-    ///     }
-    /// } else {
-    ///     // Handle the error case
-    ///     eprintln!("Error occurred while running the scan in parallel");
-    /// }
-    /// ```
     pub fn run(&self) -> Receiver<FileEntry> {
         let (tx, rx) = crossbeam_channel::bounded::<FileEntry>(self.config.limit);
 
@@ -178,21 +150,6 @@ where
 /// # Returns
 ///
 /// A `Result` containing the configured `WalkBuilder` if successful, or an `anyhow::Error` otherwise.
-///
-/// # Examples
-///
-/// ```no_run
-/// use licensa::scanner::{ScanConfig, build_walker};
-///
-/// let config = ScanConfig {
-///     root: "/path/to/project".into(),
-///     exclude: Some(vec!["target", "build"]),
-///     limit: 200
-/// };
-///
-/// let result = build_walker(&config);
-/// assert!(result.is_ok());
-/// ```
 fn build_walker(config: &ScanConfig) -> Result<WalkBuilder> {
     let mut walker = WalkBuilder::new(&config.root);
 

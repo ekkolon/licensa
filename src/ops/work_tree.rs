@@ -2,44 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 //! This module provides a framework for processing files in parallel using Rust.
-//!
-//! # Overview
-//!
-//! - `IsContext`: A trait alias representing the context type that is `Send`, `'static`, and `Clone`.
-//! - `Function`: A trait alias representing a function type that takes a mutable context and a string, returning a result.
-//! - `FileTask`: A trait for processing file contents.
-//! - `FileTaskClone`: A trait for cloning trait objects of `FileTask`.
-//! - `FunctionFileTask`: A concrete implementation of `FileTask` using a function.
-//! - `WorkTreeProcessor`: Orchestrates file processing in parallel using a collection of `FileTask` instances.
-//!
-//! # Example
-//!
-//! ```rust
-//! use std::path::PathBuf;
-//!
-//! // Define a custom context type
-//! #[derive(Clone)]
-//! struct MyContext;
-//!
-//! // Define a function for file processing
-//! fn process_function(context: &mut MyContext, file_contents: &str) -> usize {
-//!     // Your file processing logic here
-//!     file_contents.len()
-//! }
-//!
-//! // Create a WorkTreeProcessor and add a file processor
-//! let mut processor = WorkTreeProcessor::new();
-//! let context = MyContext;
-//! let receiver = processor.add_file_processor(context.clone(), process_function);
-//!
-//! // Run the processor on a list of file paths
-//! let file_paths = vec![PathBuf::from("file1.txt"), PathBuf::from("file2.txt")];
-//! processor.run(file_paths);
-//!
-//! // Outputrieve results from the receiver
-//! let result = receiver.recv().unwrap();
-//! println!("Total processed result: {}", result);
-//! ```
 
 #![allow(dead_code)]
 #![deny(bare_trait_objects)]
@@ -96,36 +58,6 @@ pub struct FileTaskResponse {
 /// A trait representing a generic file processor.
 ///
 /// Implementors of this trait should provide the logic for processing file contents.
-///
-/// # Examples
-///
-/// Implementing a custom file processor:
-///
-/// ```rust
-/// # use crossbeam_channel::Sender;
-/// # use std::sync::Arc;
-/// # use rayon::prelude::*;
-/// # use std::{fs, path::PathBuf};
-/// # use std::sync::mpsc;
-/// # use std::thread;
-///
-/// trait MyFileTask: FileTaskClone + Send {
-///     fn process_file_contents(&mut self, file_contents: &str);
-/// }
-///
-/// trait MyFileTaskClone {
-///     fn clone_box(&self) -> Box<dyn MyFileTask>;
-/// }
-///
-/// impl<T> MyFileTaskClone for T
-/// where
-///     T: MyFileTask + Clone + 'static,
-/// {
-///     fn clone_box(&self) -> Box<dyn MyFileTask> {
-///         Box::new(self.clone())
-///     }
-/// }
-/// ```
 pub trait FileTask: FileTaskClone + Send {
     /// Processes the contents of a file.
     ///
@@ -312,7 +244,7 @@ impl WorkTree {
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::create_temp_file;
+    use crate::utils::testing::create_temp_file;
 
     use super::*;
 

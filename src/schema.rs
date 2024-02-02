@@ -1,13 +1,14 @@
 // Copyright 2021-present Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{fmt, ops::Deref, str::FromStr};
+use crate::error::exit_invalid_value_err;
+use crate::license::LicensesManifest;
+use crate::utils::validate::is_valid_year;
 
 use anyhow::anyhow;
-use clap::CommandFactory;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{cli::Cli, license::LicensesManifest, validator::is_valid_year};
+use std::{fmt, ops::Deref, str::FromStr};
 
 // =========================================================
 // =========================================================
@@ -120,8 +121,8 @@ impl<'de> Deserialize<'de> for LicenseId {
 ///     format option that can be specified in the *generator* config.
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 #[serde(rename_all = "lowercase")]
-#[derive(clap::ValueEnum)]
-pub enum LicenseNoticeFormat {
+// #[derive(clap::ValueEnum)]
+pub enum LicenseHeaderFormat {
     /// Renders a two line header text in SPDX format.
     ///
     /// # Example
@@ -150,50 +151,29 @@ pub enum LicenseNoticeFormat {
     /// fn main() {}   
     /// ```
     Compact,
-
-    /// Renders the full license header, if available.
-    ///
-    /// # Example
-    ///
-    /// *licensed_file.rs*
-    /// ```no_run
-    /// // This Source Code Form is subject to the terms of the Mozilla Public
-    /// // License, v. 2.0. If a copy of the MPL was not distributed with this
-    /// // file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    ///
-    /// fn main() {}
-    /// ```
-    Full,
 }
 
-impl fmt::Display for LicenseNoticeFormat {
+impl fmt::Display for LicenseHeaderFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Self::Compact => write!(f, "{}", Self::Compact),
-            Self::Full => write!(f, "{}", Self::Full),
             Self::Spdx => write!(f, "{}", Self::Spdx),
         }
     }
 }
 
-impl From<String> for LicenseNoticeFormat {
+impl From<String> for LicenseHeaderFormat {
     fn from(value: String) -> Self {
-        LicenseNoticeFormat::from(value.as_str())
+        LicenseHeaderFormat::from(value.as_str())
     }
 }
 
-impl From<&str> for LicenseNoticeFormat {
+impl From<&str> for LicenseHeaderFormat {
     fn from(value: &str) -> Self {
         match value.to_lowercase().as_ref() {
-            "compact" => LicenseNoticeFormat::Compact,
-            "full" => LicenseNoticeFormat::Full,
-            "spdx" => LicenseNoticeFormat::Spdx,
-            val => Cli::command()
-                .error(
-                    clap::error::ErrorKind::InvalidValue,
-                    anyhow!("invalid copyright notice format '{val}'"),
-                )
-                .exit(),
+            "compact" => LicenseHeaderFormat::Compact,
+            "spdx" => LicenseHeaderFormat::Spdx,
+            other => panic!("invalid license header format {other}"),
         }
     }
 }
@@ -214,7 +194,7 @@ impl LicenseYear {
     // Constructor for single year
     pub fn single_year(year: u16) -> Self {
         if !is_valid_year(year) {
-            invalid_field_value_err("year", &year.to_string(), None)
+            exit_invalid_value_err("year", &year.to_string(), None)
         }
 
         LicenseYear {
@@ -227,7 +207,7 @@ impl LicenseYear {
     // Constructor for present
     pub fn present_year(year: u16) -> Self {
         if !is_valid_year(year) {
-            invalid_field_value_err("year", &year.to_string(), None)
+            exit_invalid_value_err("year", &year.to_string(), None)
         }
 
         LicenseYear {
@@ -240,10 +220,10 @@ impl LicenseYear {
     // Constructor for range
     pub fn year_range(start: u16, end: u16) -> Self {
         if !is_valid_year(start) {
-            invalid_field_value_err("start", &start.to_string(), None)
+            exit_invalid_value_err("start", &start.to_string(), None)
         }
         if !is_valid_year(end) {
-            invalid_field_value_err("end", &end.to_string(), None)
+            exit_invalid_value_err("end", &end.to_string(), None)
         }
 
         LicenseYear {
@@ -384,26 +364,4 @@ where
     } else {
         Err(de::Error::custom("Negative value is not a valid year"))
     }
-}
-
-// =========================================================
-
-fn invalid_field_value_err<T>(field: T, arg: T, expected: Option<T>)
-where
-    T: AsRef<str>,
-{
-    let base_msg = format!(
-        "Invalid value {} for field {}.",
-        arg.as_ref(),
-        field.as_ref(),
-    );
-
-    let mut cmd = Cli::command();
-    if let Some(expected) = expected {
-        let msg = format!("{base_msg} {}", expected.as_ref());
-        cmd.error(clap::error::ErrorKind::InvalidValue, msg).exit()
-    }
-
-    cmd.error(clap::error::ErrorKind::InvalidValue, base_msg)
-        .exit()
 }

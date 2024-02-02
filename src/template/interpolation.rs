@@ -6,72 +6,6 @@
 //! The `interpolation` module provides functions for template interpolation, allowing the dynamic
 //! insertion of values into a template string. It includes utilities for extracting template variables,
 //! resolving interpolation maps, and replacing template variables with corresponding values.
-//!
-//! ## Functions
-//!
-//! ### `extract_template_variables`
-//!
-//! ```rust
-//! fn extract_template_variables<'a, T>(template: &'a T) -> Vec<&'a str>
-//! where
-//!     T: AsRef<str> + 'a + ?Sized,
-//! ```
-//!
-//! Extracts template variables from the provided template string.
-//!
-//! ### `replace_template_variables`
-//!
-//! ```rust
-//! pub fn replace_template_variables<'a, T>(
-//!     template: &'a T,
-//!     replacements: &Map<String, Value>,
-//! ) -> String
-//! where
-//!     T: AsRef<str> + 'a + ?Sized,
-//! ```
-//!
-//! Replaces template variables in the given template string with corresponding values from the provided map.
-//!
-//! ### `resolve_interpolation_map`
-//!
-//! ```rust
-//! pub fn resolve_interpolation_map<'a, T>(
-//!     fields: Vec<&'a str>,
-//!     values: T,
-//! ) -> Result<Map<String, Value>>
-//! where
-//!     T: Serialize,
-//! ```
-//!
-//! Resolves an interpolation map by matching specified fields with corresponding values, ensuring that the values
-//! are serializable and meet the required conditions.
-//!
-//! ### `interpolate_template`
-//!
-//! ```rust
-//! pub fn interpolate_template<'a, T, F>(template: &'a T, values: F) -> Result<String>
-//! where
-//!     T: AsRef<str> + 'a + ?Sized,
-//!     F: Serialize,
-//! ```
-//!
-//! Interpolates a template string by extracting template variables, resolving an interpolation map, and replacing
-//! template variables with provided values, resulting in the final interpolated string.
-//!
-//! ## Examples
-//!
-//! ```rust
-//! use serde_json::json;
-//!
-//! let template = "Hello, $(name)!";
-//! let values = json!({
-//!     "name": "Alice"
-//! });
-//! let result = interpolation::interpolate_template(template, values).unwrap();
-//! assert_eq!(result, "Hello, Alice!");
-//! ```
-//!
-//! For more examples and usage, refer to the individual function documentation.
 
 use std::borrow::Borrow;
 
@@ -109,7 +43,7 @@ pub trait Interpolate {
 /// template is not a valid UTF-8 string.
 macro_rules! interpolate {
     ($template:expr, $values:expr) => {{
-        $crate::interpolation::__private_interpolate_template(&$template, &$values)
+        $crate::template::interpolation::__private_interpolate_template(&$template, &$values)
     }};
 }
 pub(crate) use interpolate;

@@ -1,10 +1,10 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::interpolation::{interpolate, Interpolate};
+use super::interpolation::{interpolate, Interpolate};
 use crate::utils::current_year;
+
 use anyhow::Result;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 /// Represents a simple SPDX copyright notice.
@@ -73,23 +73,4 @@ impl Interpolate for CompactCopyrightNotice {
     fn interpolate(&self) -> Result<String> {
         interpolate!(COMPACT_COPYRIGHT_NOTICE, &self)
     }
-}
-
-pub fn contains_copyright_notice<F: AsRef<str>>(file_content: F) -> bool {
-    let comment_regex = Regex::new(r#"(//|/\*|\*/|\#|<!--|--|'|<!--|""|--\[\[|--\[)"#).unwrap();
-
-    // Check for common license-related keywords within comments
-    let license_keywords = ["copyright", "license", "spdx-license-identifier"];
-
-    for keyword in &license_keywords {
-        let pattern = format!(r"(?i)\b{}\b", keyword); // Use (?i) for case-insensitive matching
-        let full_pattern = format!(r#"{}.*{}"#, comment_regex.as_str(), pattern);
-        let regex = Regex::new(&full_pattern).expect("Invalid regex");
-
-        if regex.is_match(file_content.as_ref()) {
-            return true;
-        }
-    }
-
-    false
 }
