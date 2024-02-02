@@ -795,7 +795,6 @@ dependencies = [
  "log",
  "mimalloc",
  "openssl",
- "openssl-sys",
  "rayon",
  "regex",
  "reqwest",
