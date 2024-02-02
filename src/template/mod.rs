@@ -6,20 +6,32 @@ pub mod copyright;
 pub mod header;
 pub mod interpolation;
 
-use regex::Regex;
+const BREAKWORDS: &[&str] = &[
+    "copyright",
+    "mozilla public license",
+    "spdx-license-identifier",
+    "academic free license",
+    "gnu affero general public license",
+    "gnu lesser general public license",
+    "gnu free documentation license",
+    "educational community license",
+    "mulan psl v2",
+];
 
-pub fn has_copyright_notice<F: AsRef<str>>(file_content: F) -> bool {
-    let comment_regex = Regex::new(r#"(//|/\*|\*/|\#|<!--|--|'|<!--|""|--\[\[|--\[)"#).unwrap();
+pub fn has_copyright_notice(b: &[u8]) -> bool {
+    let n = std::cmp::min(1000, b.len());
+    let lower_b: Vec<u8> = b[..n]
+        .iter()
+        .map(|&c| c.to_ascii_lowercase() as u8)
+        .collect();
 
-    // Check for common license-related keywords within comments
-    let license_keywords = ["copyright", "license", "spdx-license-identifier"];
+    let bytes = BREAKWORDS.iter().map(|w| w.as_bytes());
 
-    for keyword in &license_keywords {
-        let pattern = format!(r"(?i)\b{}\b", keyword); // Use (?i) for case-insensitive matching
-        let full_pattern = format!(r#"{}.*{}"#, comment_regex.as_str(), pattern);
-        let regex = Regex::new(&full_pattern).expect("Invalid regex");
-
-        if regex.is_match(file_content.as_ref()) {
+    for license in bytes {
+        if lower_b
+            .windows(license.len())
+            .any(|window| window == license)
+        {
             return true;
         }
     }

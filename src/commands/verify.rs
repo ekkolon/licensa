@@ -90,7 +90,7 @@ where
 
 fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) {
     let mut runner_stats = context.runner_stats.lock().unwrap();
-    if has_copyright_notice(&response.content) {
+    if has_copyright_notice(&response.content.as_bytes()) {
         runner_stats.add_action_count();
     } else {
         runner_stats.add_ignore();
