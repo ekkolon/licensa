@@ -5,7 +5,7 @@ on:
 
   push:
     tags:
-    - 'v[0-9]+.[0-9]+.[0-9]+'
+      - "v[0-9]+.[0-9]+.[0-9]+"
     ## - release
 
 env:
@@ -22,26 +22,26 @@ jobs:
       matrix:
         build: [x86_64-linux, aarch64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
         include:
-        - build: x86_64-linux
-          os: ubuntu-latest
-          rust: 1.75.0
-          target: x86_64-unknown-linux-gnu
-          cross: false
-        - build: aarch64-linux
-          os: ubuntu-latest
-          rust: 1.75.0
-          target: aarch64-unknown-linux-gnu
-          cross: true
-        - build: x86_64-macos
-          os: macos-latest
-          rust: 1.75.0
-          target: x86_64-apple-darwin
-          cross: false
-        - build: x86_64-windows
-          os: windows-latest
-          rust: 1.75.0
-          target: x86_64-pc-windows-msvc
-          cross: false
+          - build: x86_64-linux
+            os: ubuntu-latest
+            rust: 1.75.0
+            target: x86_64-unknown-linux-gnu
+            cross: false
+          - build: aarch64-linux
+            os: ubuntu-latest
+            rust: 1.75.0
+            target: aarch64-unknown-linux-gnu
+            cross: true
+          - build: x86_64-macos
+            os: macos-latest
+            rust: 1.75.0
+            target: x86_64-apple-darwin
+            cross: false
+          - build: x86_64-windows
+            os: windows-latest
+            rust: 1.75.0
+            target: x86_64-pc-windows-msvc
+            cross: false
         # - build: aarch64-macos
         #   os: macos-latest
         #   rust: 1.75.0
@@ -57,19 +57,31 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
- 
-      - name: Install ${{ matrix.rust }} toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        uses: actions/checkout@v2
         with:
+          submodules: true
+
+      - name: Install ${{ matrix.rust }} toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
           toolchain: ${{ matrix.rust }}
           target: ${{ matrix.target }}
+          override: true
 
       - name: Run cargo test
-        run: cargo test --release --locked --target ${{ matrix.target }}
- 
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.cross }}
+          command: test
+          args: --release --locked --target ${{ matrix.target }}
+
       - name: Build release binary
-        run: cargo build --release --locked --target ${{ matrix.target }}
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: ${{ matrix.cross }}
+          command: build
+          args: --release --locked --target ${{ matrix.target }}
 
       - name: Strip release binary (linux and macos)
         if: matrix.build == 'x86_64-linux' || matrix.build == 'x86_64-macos'
@@ -88,13 +100,13 @@ jobs:
         shell: bash
         run: |
           mkdir dist
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          if [ "${{ matrix.os }}" = "windows-2019" ]; then
             cp "target/${{ matrix.target }}/release/$BIN_NAME.exe" "dist/"
           else
             cp "target/${{ matrix.target }}/release/$BIN_NAME" "dist/"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v2.2.4
         with:
           name: bins-${{ matrix.build }}
           path: dist
@@ -105,11 +117,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
         with:
           submodules: false
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v2
         # with:
         #   path: dist
       # - run: ls -al ./dist
@@ -166,7 +178,7 @@ jobs:
         id: extract-version
         run: |
           printf "::set-output name=%s::%s\n" tag-name "${GITHUB_REF#refs/tags/}"
-      
+
       # Uncomment this section if you want to release your package to crates.io
       # Before publishing, make sure you have filled out the following fields:
       # license or license-file, description, homepage, documentation, repository, readme.
