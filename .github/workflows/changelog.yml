@@ -6,6 +6,7 @@ jobs:
   changelog:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: "Generate release changelog"
         uses: jaywcjlove/changelog-generator@main
         with:
