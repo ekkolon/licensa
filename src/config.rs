@@ -129,7 +129,7 @@ impl Config {
         Config {
             email: empty.email().map(|s| s.to_owned()),
             exclude: Some(empty.exclude().to_vec()),
-            format: Some(empty.format().to_owned()),
+            format: empty.format().map(|s| s.to_owned()),
             owner: empty.holder().map(|s| s.to_owned()),
             license: empty.license().map(|s| s.into()),
             project: empty.project().map(|s| s.to_owned()),
@@ -183,8 +183,8 @@ impl Config {
         self.exclude.as_ref().map(|v| v.as_ref()).unwrap_or(&[])
     }
 
-    pub fn format(&self) -> &LicenseHeaderFormat {
-        self.format.as_ref().unwrap_or(&LicenseHeaderFormat::Spdx)
+    pub fn format(&self) -> Option<LicenseHeaderFormat> {
+        self.format.clone()
     }
 
     pub fn holder(&self) -> Option<&str> {
@@ -222,7 +222,7 @@ impl Config {
     {
         let mut merge_config = Config::from_defaults();
         merge_config.update(self.clone());
-        Self::from_workspace_config(workspace_root, None)
+        Self::from_workspace_config(workspace_root, Some(merge_config))
     }
 
     /// Try to resolve workspace configuration and merge those with defaults.
