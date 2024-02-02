@@ -20,10 +20,7 @@ const BREAKWORDS: &[&str] = &[
 
 pub fn has_copyright_notice(b: &[u8]) -> bool {
     let n = std::cmp::min(1000, b.len());
-    let lower_b: Vec<u8> = b[..n]
-        .iter()
-        .map(|&c| c.to_ascii_lowercase() as u8)
-        .collect();
+    let lower_b: Vec<u8> = b[..n].iter().map(|&c| c.to_ascii_lowercase()).collect();
 
     let bytes = BREAKWORDS.iter().map(|w| w.as_bytes());
 
