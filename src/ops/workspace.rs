@@ -120,7 +120,7 @@ where
     T: Serialize,
 {
     let workspace_root = workspace_root.as_ref();
-    verify_dir(&workspace_root)?;
+    verify_dir(workspace_root)?;
     let config = serde_json::to_value(config.borrow())?;
     let config_path = workspace_root.join(DEFAULT_CONFIG_FILENAME);
     write_json(config_path, &config)?;
