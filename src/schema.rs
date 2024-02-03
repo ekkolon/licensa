@@ -1,5 +1,5 @@
 // Copyright 2021-present Nelson Dominguez
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::error::exit_invalid_value_err;
 use crate::license::LicensesManifest;

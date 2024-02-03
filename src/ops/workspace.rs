@@ -1,5 +1,5 @@
 // Copyright 2024 Nelson Dominguez
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::utils::{resolve_any_path, verify_dir, write_json};
 
