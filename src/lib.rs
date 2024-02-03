@@ -14,4 +14,5 @@ mod error;
 mod license;
 mod ops;
 mod schema;
+mod spdx;
 mod utils;
