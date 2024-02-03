@@ -6,7 +6,7 @@ description = "CLI tool to enforce, verify, apply and modify file license header
 authors = ["Nelson Dominguez <ekkolon@proton.me>"]
 categories = ["command-line-utilities", "development-tools"]
 keywords = ["licensing", "cli"]
-license = "Apache-2.0"
+license = "MIT OR Apache-2.0"
 rust-version = "1.75.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
