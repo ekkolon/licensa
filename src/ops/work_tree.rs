@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! This module provides a framework for processing files in parallel using Rust.
+//! This module provides a framework for processing files in parallel.
 
 #![allow(dead_code)]
 #![deny(bare_trait_objects)]
