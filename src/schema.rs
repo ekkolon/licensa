@@ -100,14 +100,14 @@ impl<'de> Deserialize<'de> for LicenseId {
 
 #[derive(Debug, Clone)]
 pub struct LicenseYear {
-    start: u16,
-    end: Option<u16>,
+    start: u32,
+    end: Option<u32>,
     is_present: bool,
 }
 
 impl LicenseYear {
     // Constructor for single year
-    pub fn single_year(year: u16) -> Self {
+    pub fn single_year(year: u32) -> Self {
         if !is_valid_year(year) {
             exit_invalid_value_err("year", &year.to_string(), None)
         }
@@ -120,7 +120,7 @@ impl LicenseYear {
     }
 
     // Constructor for present
-    pub fn present_year(year: u16) -> Self {
+    pub fn present_year(year: u32) -> Self {
         if !is_valid_year(year) {
             exit_invalid_value_err("year", &year.to_string(), None)
         }
@@ -133,7 +133,7 @@ impl LicenseYear {
     }
 
     // Constructor for range
-    pub fn year_range(start: u16, end: u16) -> Self {
+    pub fn year_range(start: u32, end: u32) -> Self {
         if !is_valid_year(start) {
             exit_invalid_value_err("start", &start.to_string(), None)
         }
@@ -167,15 +167,15 @@ impl FromStr for LicenseYear {
         let parts: Vec<&str> = s.split('-').collect();
         match parts.len() {
             1 => {
-                let year = parts[0].parse::<u16>().map_err(|_| "Invalid year")?;
+                let year = parts[0].parse::<u32>().map_err(|_| "Invalid year")?;
                 Ok(LicenseYear::single_year(year))
             }
             2 => {
-                let start = parts[0].parse::<u16>().map_err(|_| "Invalid start year")?;
+                let start = parts[0].parse::<u32>().map_err(|_| "Invalid start year")?;
                 if parts[1] == "present" {
                     Ok(LicenseYear::present_year(start))
                 } else {
-                    let end = parts[1].parse::<u16>().map_err(|_| "Invalid end year")?;
+                    let end = parts[1].parse::<u32>().map_err(|_| "Invalid end year")?;
                     Ok(LicenseYear::year_range(start, end))
                 }
             }
@@ -246,7 +246,7 @@ where
         let start = &value[..index];
         let end = &value[(index + 1)..];
 
-        match (start.parse::<u16>(), end.parse::<u16>()) {
+        match (start.parse::<u32>(), end.parse::<u32>()) {
             (Ok(start), Ok(end)) => Ok(LicenseYear {
                 start,
                 end: Some(end),
@@ -254,7 +254,7 @@ where
             }),
             _ => Err(de::Error::custom("Invalid year range")),
         }
-    } else if let Ok(start) = value.parse::<u16>() {
+    } else if let Ok(start) = value.parse::<u32>() {
         Ok(LicenseYear {
             start,
             end: None,
@@ -272,7 +272,7 @@ where
     // Parse as u16 and convert to LicenseYear
     if is_valid_year(value) {
         Ok(LicenseYear {
-            start: value as u16,
+            start: value as u32,
             end: None,
             is_present: false,
         })
