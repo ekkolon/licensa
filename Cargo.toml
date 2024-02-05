@@ -2,10 +2,10 @@
 name = "licensa"
 version = "0.1.0"
 edition = "2021"
-description = "CLI tool to enforce, verify, apply and modify file license headers"
+description = "CLI tool for seamless source code license management, supporting 65+ file types"
 authors = ["Nelson Dominguez <ekkolon@proton.me>"]
 categories = ["command-line-utilities", "development-tools"]
-keywords = ["licensing", "cli"]
+keywords = ["cli", "spdx", "license headers", "license management"]
 license = "MIT OR Apache-2.0"
 rust-version = "1.75.0"
 
