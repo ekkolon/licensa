@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use super::interpolation::{interpolate, Interpolate};
-use crate::utils::current_year;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -15,14 +14,13 @@ SPDX-License-Identifier: {{license}}"#;
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct SpdxCopyrightNotice {
     /// The full name of the copyright holder.
-    pub fullname: String,
+    pub owner: String,
 
     /// The type of license governing the use of the source code.
     pub license: String,
 
     /// The year(s) to be included in the copyright notice.
-    #[serde(default = "current_year")]
-    pub year: u16,
+    pub year: Option<u16>,
 }
 
 impl Interpolate for SpdxCopyrightNotice {

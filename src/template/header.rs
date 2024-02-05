@@ -223,8 +223,8 @@ mod tests {
 
         // Test case 1
         let data = SpdxCopyrightNotice {
-            year: 2022,
-            fullname: "Jane Doe".to_string(),
+            year: Some(2022),
+            owner: "Jane Doe".to_string(),
             license: "MIT".to_string(),
         };
 
