@@ -3,7 +3,6 @@
 
 use crate::config::Config;
 use crate::error::exit_io_error;
-use crate::license::LicensesManifest;
 use crate::ops::workspace::{save_workspace_config, throw_workspace_config_exists};
 use crate::schema::{LicenseHeaderFormat, LicenseId};
 use crate::workspace::LicensaWorkspace;
@@ -14,6 +13,7 @@ use inquire::{Select, Text};
 
 use std::env::current_dir;
 use std::fs;
+use std::str::FromStr;
 
 #[derive(Args, Debug, Clone)]
 pub struct InitArgs {
@@ -75,9 +75,10 @@ pub fn run(args: &InitArgs) -> Result<()> {
 }
 
 fn prompt_license_selection() -> Result<LicenseId> {
-    let license_ids = LicensesManifest::spdx_ids();
+    let license_ids = crate::spdx::list_spdx_license_names();
     let license_id: String = Select::new("Choose a License", license_ids).prompt()?;
-    let license_id = LicenseId::from(license_id);
+    let license_id = crate::spdx::id_from_license_fullname(&license_id)?;
+    let license_id = LicenseId::from_str(&license_id)?;
     Ok(license_id)
 }
 

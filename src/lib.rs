@@ -13,5 +13,7 @@ mod env;
 mod error;
 mod license;
 mod ops;
+mod parser;
 mod schema;
+mod spdx;
 mod utils;
