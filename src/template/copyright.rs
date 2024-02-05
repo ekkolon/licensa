@@ -8,8 +8,8 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Represents a simple SPDX copyright notice.
-pub const SPDX_COPYRIGHT_NOTICE: &str = r#"Copyright $(year) $(fullname)
-SPDX-License-Identifier: $(license)"#;
+pub const SPDX_COPYRIGHT_NOTICE: &str = r#"Copyright{{#if year}} {{year}}{{/if}} {{owner}}
+SPDX-License-Identifier: {{license}}"#;
 
 /// Holds information for a simple SPDX copyright notice.
 #[derive(Debug, Deserialize, Serialize, Default)]

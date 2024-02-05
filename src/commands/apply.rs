@@ -80,7 +80,9 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     let runner_stats = Arc::new(Mutex::new(runner_stats));
     let cache = Cache::<HeaderTemplate>::new();
 
-    let template = Arc::new(Mutex::new(SPDX_COPYRIGHT_NOTICE.to_string()));
+    let template_engine = handlebars::Handlebars::new();
+    let template = template_engine.render_template(SPDX_COPYRIGHT_NOTICE, &workspace_config)?;
+    let template = Arc::new(Mutex::new(template));
 
     let context = ScanContext {
         root: workspace_root,
