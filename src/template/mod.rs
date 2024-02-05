@@ -4,7 +4,6 @@
 pub mod cache;
 pub mod copyright;
 pub mod header;
-pub mod interpolation;
 
 const BREAKWORDS: &[&str] = &[
     "spdx-license-identifier: ",

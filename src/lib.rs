@@ -9,9 +9,7 @@ pub mod config;
 pub mod template;
 pub mod workspace;
 
-mod env;
 mod error;
-mod license;
 mod ops;
 mod parser;
 mod schema;

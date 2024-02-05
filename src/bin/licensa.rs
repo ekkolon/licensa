@@ -26,10 +26,6 @@ fn run() -> Result<()> {
         Command::Verify(args) => {
             commands::verify::run(args)?;
         }
-
-        Command::List(args) => {
-            commands::list::run(args);
-        }
     };
 
     Ok(())
