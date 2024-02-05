@@ -215,23 +215,25 @@ pub fn extract_hash_bang(b: &[u8]) -> Option<Vec<u8>> {
 mod tests {
     use super::*;
     use crate::template::copyright::{SpdxCopyrightNotice, SPDX_COPYRIGHT_NOTICE};
-    use crate::template::interpolation::interpolate;
 
     #[test]
     fn test_execute_template_spdx_copyright_notice() {
         let rs_header_prefix = SourceHeaders::find_header_prefix_for_extension(".rs").unwrap();
+        let reg = handlebars::Handlebars::new();
 
         // Test case 1
         let data = SpdxCopyrightNotice {
-            year: 2022,
-            fullname: "Jane Doe".to_string(),
+            year: Some(2022),
+            owner: "Bilbo Baggins".to_string(),
             license: "MIT".to_string(),
         };
 
-        let result = rs_header_prefix
-            .apply(interpolate!(SPDX_COPYRIGHT_NOTICE, &data).unwrap())
-            .unwrap();
-        let expected: &str = r#"// Copyright 2022 Jane Doe
+        let template = reg.render_template(SPDX_COPYRIGHT_NOTICE, &data);
+        assert!(template.is_ok());
+        let template = template.unwrap();
+
+        let result = rs_header_prefix.apply(&template).unwrap();
+        let expected: &str = r#"// Copyright 2022 Bilbo Baggins
 // SPDX-License-Identifier: MIT
 
 "#;
@@ -245,14 +247,12 @@ mod tests {
 
         // JavaScript
         let js_header_prefix = SourceHeaders::find_header_prefix_for_extension(".js").unwrap();
-        let result = js_header_prefix
-            .apply(interpolate!(SPDX_COPYRIGHT_NOTICE, &data).unwrap())
-            .unwrap();
+        let result = js_header_prefix.apply(template).unwrap();
 
         // Disable linting for template whitespace to be valid
         #[deny(clippy::all)]
         let expected: &str = r#"/**
- * Copyright 2022 Jane Doe
+ * Copyright 2022 Bilbo Baggins
  * SPDX-License-Identifier: MIT
  */
 
