@@ -1,9 +1,6 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use super::interpolation::{interpolate, Interpolate};
-
-use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 /// Represents a simple SPDX copyright notice.
@@ -21,12 +18,6 @@ pub struct SpdxCopyrightNotice {
 
     /// The year(s) to be included in the copyright notice.
     pub year: Option<u16>,
-}
-
-impl Interpolate for SpdxCopyrightNotice {
-    fn interpolate(&self) -> Result<String> {
-        interpolate!(SPDX_COPYRIGHT_NOTICE, &self)
-    }
 }
 
 #[cfg(test)]
