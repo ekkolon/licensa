@@ -14,7 +14,6 @@ use clap::Args;
 use inquire::{Select, Text};
 
 use std::env::current_dir;
-use std::fs;
 use std::str::FromStr;
 
 #[derive(Args, Debug, Clone)]
@@ -30,8 +29,7 @@ impl InitArgs {
 }
 
 pub fn run(args: &InitArgs) -> Result<()> {
-    let workspace_root = current_dir()?.join("tmp");
-    fs::create_dir_all(&workspace_root)?;
+    let workspace_root = current_dir()?;
 
     if let Err(err) = throw_workspace_config_exists(&workspace_root) {
         exit_io_error(err);
