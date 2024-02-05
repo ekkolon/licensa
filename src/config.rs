@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::ops::workspace::find_workspace_config;
-use crate::schema::{LicenseHeaderFormat, LicenseId, LicenseYear};
+use crate::schema::{LicenseId, LicenseYear};
 
 use anyhow::{anyhow, Result};
 use clap::Args;
@@ -97,20 +97,6 @@ pub struct Config {
     #[arg(long, value_name = "YYYY | YYYY-YYYY | YYYY-present")]
     pub year: Option<LicenseYear>,
 
-    /// The copyright header format to apply on each file to be licensed.
-    #[arg(
-        short,
-        long,
-        value_enum,
-        rename_all = "lower",
-        requires_if("compact", "compact_format")
-    )]
-    pub format: Option<LicenseHeaderFormat>,
-
-    #[command(flatten)]
-    #[serde(flatten)]
-    pub compact_format_args: CompactLicenseNoticeArgs,
-
     /// A list of glob patterns to exclude from the licensing process.
     ///
     /// Defining patterns here is synonymous to adding them either to
@@ -129,16 +115,11 @@ impl Config {
         Config {
             email: empty.email().map(|s| s.to_owned()),
             exclude: Some(empty.exclude().to_vec()),
-            format: empty.format().map(|s| s.to_owned()),
             owner: empty.holder().map(|s| s.to_owned()),
             license: empty.license().map(|s| s.into()),
             project: empty.project().map(|s| s.to_owned()),
             project_url: empty.project_url().map(|s| s.to_owned()),
             year: empty.year().map(|s| s.to_owned()),
-            compact_format_args: CompactLicenseNoticeArgs {
-                location: empty.location().map(|s| s.to_owned()),
-                determiner: empty.determiner().map(|s| s.to_owned()),
-            },
         }
     }
 
@@ -148,9 +129,6 @@ impl Config {
         }
         if let Some(exclude) = source.exclude.as_deref() {
             self.exclude = Some(exclude.to_owned())
-        }
-        if let Some(format) = source.format.as_ref() {
-            self.format = Some(format.to_owned())
         }
         if let Some(holder) = source.owner.as_deref() {
             self.owner = Some(holder.to_owned())
@@ -167,12 +145,6 @@ impl Config {
         if let Some(year) = source.year.as_ref() {
             self.year = Some(year.to_owned())
         }
-        if let Some(location) = source.compact_format_args.location.as_ref() {
-            self.compact_format_args.location = Some(location.to_owned())
-        }
-        if let Some(determiner) = source.compact_format_args.determiner.as_ref() {
-            self.compact_format_args.determiner = Some(determiner.to_owned())
-        }
     }
 
     pub fn email(&self) -> Option<&str> {
@@ -181,10 +153,6 @@ impl Config {
 
     pub fn exclude(&self) -> &[String] {
         self.exclude.as_ref().map(|v| v.as_ref()).unwrap_or(&[])
-    }
-
-    pub fn format(&self) -> Option<LicenseHeaderFormat> {
-        self.format.clone()
     }
 
     pub fn holder(&self) -> Option<&str> {
@@ -205,14 +173,6 @@ impl Config {
 
     pub fn year(&self) -> Option<&LicenseYear> {
         self.year.as_ref()
-    }
-
-    pub fn location(&self) -> Option<&str> {
-        self.compact_format_args.location.as_deref()
-    }
-
-    pub fn determiner(&self) -> Option<&str> {
-        self.compact_format_args.determiner.as_deref()
     }
 
     /// Try to resolve workspace configuration and merge those with defaults.
@@ -244,39 +204,4 @@ impl Config {
 
         Ok(config)
     }
-}
-
-#[derive(Debug, Args, Serialize, Deserialize, Clone, Default)]
-#[group(id = "compact_format", required = false, multiple = true)]
-pub struct CompactLicenseNoticeArgs {
-    /// Specifies the location where the full LICENSE text can be accessed.
-    ///
-    /// This argument is utilized in tandem with `--determiner` and is only applicable
-    /// when applying license headers in `compact` format.
-    ///
-    /// It accepts either a brief text description, such as "the root of this project,"
-    /// or a URL, for example, "https://www.apache.org/licenses/LICENSE-2.0."
-    ///
-    /// For instance, when the full license text is stored on your project's homepage,
-    /// set the `--location` and `--determiner` arguments as follows:
-    ///
-    /// `licensa [COMMAND] --format compact --determiner "at" --location "https://myproject.com/license"`.
-    ///
-    /// Similarly, if the license text resides in your project repository:
-    ///
-    /// `licensa [COMMAND] --format compact --determiner in --location "the root of this project"`.
-    #[arg(long = "location", value_name = "TEXT | URL")]
-    #[serde(rename = "location")]
-    pub location: Option<String>,
-
-    /// Specifies the preposition that precedes the path to the license in a sentence (e.g., "in").
-    ///
-    /// This argument is only applicable when using the 'compact' format.
-    ///
-    /// It allows you to customize the language used in the license header placement.
-    /// For example, if you want the header to read "License information is located in the root of this project,"
-    /// you would use `--determiner "in"`.
-    #[arg(long = "determiner", value_name = "PREPOSIION")]
-    #[serde(rename = "determiner")]
-    pub determiner: Option<String>,
 }

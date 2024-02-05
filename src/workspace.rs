@@ -3,7 +3,7 @@
 
 //! Licensa configuration file parser and utils
 
-use crate::schema::{LicenseHeaderFormat, LicenseId, LicenseYear};
+use crate::schema::{LicenseId, LicenseYear};
 
 use serde::{Deserialize, Serialize};
 
@@ -32,13 +32,10 @@ use serde::{Deserialize, Serialize};
 pub struct LicensaWorkspace {
     pub owner: String,
     pub license: LicenseId,
-    pub format: LicenseHeaderFormat,
     pub exclude: Vec<String>,
     pub year: Option<LicenseYear>,
     pub email: Option<String>,
     pub project: Option<String>,
     #[serde(rename(serialize = "projecturl"))]
     pub project_url: Option<url::Url>,
-    pub location: Option<String>,
-    pub determiner: Option<String>,
 }

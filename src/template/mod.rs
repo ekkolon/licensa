@@ -7,15 +7,17 @@ pub mod header;
 pub mod interpolation;
 
 const BREAKWORDS: &[&str] = &[
-    "copyright",
+    "spdx-license-identifier: ",
+    "copyright (c)",
+    "all rights reserved",
     "mozilla public license",
-    "spdx-license-identifier",
     "academic free license",
     "gnu affero general public license",
     "gnu lesser general public license",
     "gnu free documentation license",
     "educational community license",
     "mulan psl v2",
+    "copyright ",
 ];
 
 pub fn has_copyright_notice(b: &[u8]) -> bool {
