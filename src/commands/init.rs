@@ -56,6 +56,8 @@ pub fn run(args: &InitArgs) -> Result<()> {
     save_workspace_config(&workspace_root, workspace_config)?;
     save_workspace_ignore(workspace_root)?;
 
+    println!("Successfully initialized Licensa workspace");
+
     Ok(())
 }
 
