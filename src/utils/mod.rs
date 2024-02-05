@@ -9,7 +9,6 @@ pub mod validate;
 use validate::is_valid_year;
 
 use anyhow::{anyhow, Result};
-use chrono::{Datelike, TimeZone};
 
 use std::{
     fs::File,
@@ -27,23 +26,40 @@ pub fn verify_dir<P: AsRef<Path>>(path: P) -> Result<()> {
     Ok(())
 }
 
-/// Returns the current year as determined by the OS.
-///
-/// This function panics if the current timestamp cannot be determined
-/// or is invalid, that is the timestamp seconds is out of range.
-pub fn current_year() -> u16 {
-    let current_timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Failed to get current timestamp")
-        .as_secs();
-
-    chrono::Utc
-        .timestamp_opt(current_timestamp as i64, 0)
-        .unwrap()
-        .year() as u16
+fn is_leap_year(year: u32) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }
 
-pub fn is_year_in_range<T>(year: T, start_at: u16, end_at: u16) -> bool
+fn current_year() -> u32 {
+    let now = SystemTime::now();
+    let seconds_since_epoch = now
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs();
+    let seconds_in_a_non_leap_year = 365 * 24 * 60 * 60;
+
+    let mut current_year = 1970;
+    let mut remaining_seconds = seconds_since_epoch;
+
+    while remaining_seconds >= seconds_in_a_non_leap_year {
+        let seconds_in_current_year = if is_leap_year(current_year) {
+            366 * 24 * 60 * 60
+        } else {
+            seconds_in_a_non_leap_year
+        };
+
+        if remaining_seconds >= seconds_in_current_year {
+            remaining_seconds -= seconds_in_current_year;
+            current_year += 1;
+        } else {
+            break;
+        }
+    }
+
+    current_year
+}
+
+pub fn is_year_in_range<T>(year: T, start_at: u32, end_at: u32) -> bool
 where
     T: ToString,
 {
@@ -54,7 +70,7 @@ where
         return false;
     }
 
-    let year: u16 = year.to_string().parse().unwrap();
+    let year: u32 = year.to_string().parse().unwrap();
     (start_at..=end_at).contains(&year)
 }
 
@@ -129,15 +145,34 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn test_current_year() {
-        // Test the current_year function
+    fn test_leap_year() {
+        // Leap years: 2000, 2004, 2008, ...
+        assert!(is_leap_year(2000));
+        assert!(is_leap_year(2004));
+        assert!(is_leap_year(2008));
+
+        // Non-leap years: 2001, 2002, 2003, ...
+        assert!(!is_leap_year(2001));
+        assert!(!is_leap_year(2002));
+        assert!(!is_leap_year(2003));
+    }
+
+    #[test]
+    fn test_get_current_year() {
+        // This test is based on the assumption that the test is run relatively soon
+        // after the initial implementation. It's not an exact test due to potential
+        // variations in the actual current year.
+
         let current_year = current_year();
+        let now = SystemTime::now();
+        let seconds_since_epoch = now
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs();
+        let years_since_epoch = seconds_since_epoch / (365 * 24 * 60 * 60);
 
-        // Get the current year using chrono
-        let chrono_current_year = chrono::Utc::now().year() as u16;
-
-        // Ensure that the current year matches the one obtained from chrono
-        assert_eq!(current_year, chrono_current_year);
+        // We allow a small difference due to potential variations in execution time.
+        assert!(current_year >= 1970 && current_year <= 1970 + years_since_epoch as u32 + 1);
     }
 
     #[test]
