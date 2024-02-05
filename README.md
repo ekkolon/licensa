@@ -6,6 +6,27 @@ As of today, Licensa boasts compatibility with over **65 file types**, making it
 
 ## Installation
 
+### Linux
+
+Licensa currently supports the following architectures:
+
+- **x86_64** (64-bit Intel/AMD processors)
+- **aarch64** (64-bit ARM processors)
+
+Run the following command and follow the on-screen instructions:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ekkolon/licensa/main/scripts/install.sh)"
+```
+
+This script will:
+
+- automatically detect your machine's architecture
+- download and unpack the necessary .tar
+- copy the `licensa` binary to `usr/local/bin`
+
+For more details, you can review the [installation script](/scripts/install.sh) directly.
+
 ### Windows
 
 Before running the installation script, ensure that your PowerShell execution policy allows (remote) script execution. You can set the execution policy using the following command:
