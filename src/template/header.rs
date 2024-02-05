@@ -214,10 +214,7 @@ pub fn extract_hash_bang(b: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::template::copyright::{
-        CompactCopyrightNotice, SpdxCopyrightNotice, COMPACT_COPYRIGHT_NOTICE,
-        SPDX_COPYRIGHT_NOTICE,
-    };
+    use crate::template::copyright::{SpdxCopyrightNotice, SPDX_COPYRIGHT_NOTICE};
     use crate::template::interpolation::interpolate;
 
     #[test]
@@ -260,32 +257,6 @@ mod tests {
  */
 
 "#;
-        assert_eq!(&result, expected);
-
-        let data = CompactCopyrightNotice {
-            year: 2024,
-            fullname: "John Doe".into(),
-            license: "Apache-2.0".into(),
-            determiner: "in".into(),
-            location: "the root of this project".into(),
-        };
-
-        let js_header_prefix = SourceHeaders::find_header_prefix_for_extension(".js").unwrap();
-        let result = js_header_prefix
-            .apply(interpolate!(COMPACT_COPYRIGHT_NOTICE, &data).unwrap())
-            .unwrap();
-
-        // Disable linting for template whitespace to be valid
-        #[deny(clippy::all)]
-        let expected: &str = r#"/**
- * Copyright 2024 John Doe
- * 
- * Use of this source code is governed by an Apache-2.0-style license that can be
- * found in the LICENSE file in the root of this project.
- */
-
-"#;
-
         assert_eq!(&result, expected);
     }
 

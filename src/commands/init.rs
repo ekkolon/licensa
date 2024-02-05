@@ -4,7 +4,7 @@
 use crate::config::Config;
 use crate::error::exit_io_error;
 use crate::ops::workspace::{save_workspace_config, throw_workspace_config_exists};
-use crate::schema::{LicenseHeaderFormat, LicenseId};
+use crate::schema::LicenseId;
 use crate::workspace::LicensaWorkspace;
 
 use anyhow::Result;
@@ -47,22 +47,6 @@ pub fn run(args: &InitArgs) -> Result<()> {
         let owner = prompt_copyright_owner()?;
         let _ = config.owner.insert(owner);
     }
-    if config.format.is_none() {
-        let format = prompt_copyright_notice_format()?;
-        if format == LicenseHeaderFormat::Compact {
-            if config.compact_format_args.location.is_none() {
-                let location = prompt_license_location()?;
-                let _ = config.compact_format_args.location.insert(location);
-            }
-
-            if config.compact_format_args.determiner.is_none() {
-                let determiner = prompt_license_location_determiner()?;
-                let _ = config.compact_format_args.determiner.insert(determiner);
-            }
-        }
-
-        let _ = config.format.insert(format);
-    }
 
     // FIXME: Invalid range error when using format YYYY-present
     // TODO: check year
@@ -85,31 +69,4 @@ fn prompt_license_selection() -> Result<LicenseId> {
 fn prompt_copyright_owner() -> Result<String> {
     let owner = Text::new("Copyright owner").prompt()?;
     Ok(owner)
-}
-
-fn prompt_copyright_notice_format() -> Result<LicenseHeaderFormat> {
-    let options = ["Compact", "Full", "Spdx"];
-    let format = Select::new(
-        "The format of the copyright notice to render",
-        options.to_vec(),
-    )
-    // .with_starting_cursor(2)
-    .prompt()?;
-
-    Ok(LicenseHeaderFormat::from(format))
-}
-
-fn prompt_license_location() -> Result<String> {
-    let location = Text::new("Where can users find your license")
-        .with_placeholder("e.g. \"the root of this project\"")
-        .prompt()?;
-    Ok(location)
-}
-
-fn prompt_license_location_determiner() -> Result<String> {
-    let delimiter = Text::new("License location text delimiter")
-        .with_placeholder("e.g. \"in\" or \"at\"")
-        .prompt()?;
-
-    Ok(delimiter)
 }

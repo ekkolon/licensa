@@ -6,14 +6,10 @@ use crate::error;
 use crate::ops::scan::{get_path_suffix, Scan, ScanConfig};
 use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::ops::work_tree::{FileTaskResponse, WorkTree};
-use crate::schema::LicenseHeaderFormat;
 use crate::template::cache::{Cachable, Cache};
-use crate::template::copyright::{
-    CompactCopyrightNotice, SpdxCopyrightNotice, COMPACT_COPYRIGHT_NOTICE, SPDX_COPYRIGHT_NOTICE,
-};
+use crate::template::copyright::SPDX_COPYRIGHT_NOTICE;
 use crate::template::has_copyright_notice;
 use crate::template::header::{extract_hash_bang, SourceHeaders};
-use crate::template::interpolation::interpolate;
 use crate::workspace::LicensaWorkspace;
 
 use anyhow::Result;
@@ -22,7 +18,6 @@ use colored::Colorize;
 use rayon::prelude::*;
 use serde::Serialize;
 
-use std::borrow::Borrow;
 use std::env::current_dir;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -63,9 +58,6 @@ impl ApplyArgs {
         if config.owner.is_none() {
             error::missing_required_arg_error("-o, --owner <OWNER>")
         }
-        if config.format.is_none() {
-            error::missing_required_arg_error("-f, --format <FORMAT>")
-        }
     }
 }
 
@@ -88,8 +80,7 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     let runner_stats = Arc::new(Mutex::new(runner_stats));
     let cache = Cache::<HeaderTemplate>::new();
 
-    let template = resolve_license_notice_template(workspace_config)?;
-    let template = Arc::new(Mutex::new(template));
+    let template = Arc::new(Mutex::new(SPDX_COPYRIGHT_NOTICE.to_string()));
 
     let context = ScanContext {
         root: workspace_root,
@@ -157,36 +148,6 @@ where
         .collect();
 
     Ok(candidates)
-}
-
-fn resolve_license_notice_template<C>(config: C) -> Result<String>
-where
-    C: Borrow<LicensaWorkspace>,
-{
-    let config = config.borrow() as &LicensaWorkspace;
-
-    match config.format {
-        LicenseHeaderFormat::Compact => interpolate!(
-            COMPACT_COPYRIGHT_NOTICE,
-            CompactCopyrightNotice {
-                year: 2024,
-                fullname: config.owner.to_string(),
-                license: config.license.to_string(),
-                determiner: config.determiner.clone().unwrap(),
-                location: config.location.clone().unwrap(),
-            }
-        ),
-        LicenseHeaderFormat::Spdx => {
-            interpolate!(
-                SPDX_COPYRIGHT_NOTICE,
-                SpdxCopyrightNotice {
-                    year: 2024,
-                    fullname: config.owner.to_string(),
-                    license: config.license.to_string(),
-                }
-            )
-        }
-    }
 }
 
 fn apply_license_notice(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
