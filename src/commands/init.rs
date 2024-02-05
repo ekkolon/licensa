@@ -3,7 +3,9 @@
 
 use crate::config::Config;
 use crate::error::exit_io_error;
-use crate::ops::workspace::{save_workspace_config, throw_workspace_config_exists};
+use crate::ops::workspace::{
+    save_workspace_config, save_workspace_ignore, throw_workspace_config_exists,
+};
 use crate::schema::LicenseId;
 use crate::workspace::LicensaWorkspace;
 
@@ -53,7 +55,8 @@ pub fn run(args: &InitArgs) -> Result<()> {
 
     let workspace_config = serde_json::to_value(config)?;
     let workspace_config: LicensaWorkspace = serde_json::from_value(workspace_config)?;
-    save_workspace_config(workspace_root, workspace_config)?;
+    save_workspace_config(&workspace_root, workspace_config)?;
+    save_workspace_ignore(workspace_root)?;
 
     Ok(())
 }
