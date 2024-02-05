@@ -30,3 +30,45 @@ impl Interpolate for SpdxCopyrightNotice {
         interpolate!(SPDX_COPYRIGHT_NOTICE, &self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_spdx_template_without_year() {
+        let reg = handlebars::Handlebars::new();
+
+        let data = json!({
+            "owner": "Bilbo Baggins",
+            "license": "MIT"
+        });
+
+        let expected_template = "Copyright Bilbo Baggins\nSPDX-License-Identifier: MIT";
+
+        let template = reg.render_template(SPDX_COPYRIGHT_NOTICE, &data);
+
+        assert!(template.is_ok());
+        assert_eq!(template.unwrap(), expected_template.to_string());
+    }
+
+    #[test]
+    fn test_spdx_template_with_year() {
+        let reg = handlebars::Handlebars::new();
+
+        let data = json!({
+            "owner": "Gandalf",
+            "license": "MIT OR Apache-2.0",
+            "year": 2012
+        });
+
+        let expected_template =
+            "Copyright 2012 Gandalf\nSPDX-License-Identifier: MIT OR Apache-2.0";
+
+        let template = reg.render_template(SPDX_COPYRIGHT_NOTICE, &data);
+
+        assert!(template.is_ok());
+        assert_eq!(template.unwrap(), expected_template.to_string());
+    }
+}
