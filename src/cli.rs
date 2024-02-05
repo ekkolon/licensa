@@ -3,7 +3,6 @@
 
 use crate::commands::apply::ApplyArgs;
 use crate::commands::init::InitArgs;
-use crate::commands::list::ListArgs;
 use crate::commands::verify::VerifyArgs;
 
 use clap::{Parser, Subcommand};
@@ -82,8 +81,4 @@ pub enum Command {
     /// - Insufficient read/write permissions for source files
     #[command(name = "apply")]
     Apply(ApplyArgs),
-
-    /// Get a list of available licenses
-    #[command(name = "list")]
-    List(ListArgs),
 }
