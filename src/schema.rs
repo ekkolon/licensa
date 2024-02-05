@@ -38,7 +38,6 @@ impl FromStr for LicenseId {
         }
 
         let license_id = try_find_by_id(expr)?;
-        println!("try_find_by_id(): {:?}", license_id);
         if license_id.is_none() {
             let err_msg = format!("invalid SPDX License ID or expression '{}'", expr);
             return Err(anyhow!(err_msg));
