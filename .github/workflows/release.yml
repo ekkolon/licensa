@@ -6,7 +6,7 @@ on:
 
 env:
   BIN_NAME: licensa
-  PROJECT_NAME: Licensa
+  PROJECT_NAME: licensa
   REPO_NAME: ekkolon/licensa
 
 jobs:
@@ -172,15 +172,3 @@ jobs:
         id: extract-version
         run: |
           printf "::set-output name=%s::%s\n" tag-name "${GITHUB_REF#refs/tags/}"
-
-      # Publish crate to crates.io    
-      # Read more: https://doc.rust-lang.org/cargo/reference/publishing.html
-      - name: Install ${{ matrix.rust }} toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          target: ${{ matrix.target }}
-      - run: cargo publish --token ${CRATES_TOKEN}
-        env:
-          CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
