@@ -4,12 +4,19 @@
 use crate::utils::{resolve_any_path, verify_dir, write_json};
 
 use anyhow::{anyhow, Result};
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use std::borrow::Borrow;
 use std::fs;
 use std::path::Path;
+
+lazy_static! {
+    static ref LICENSA_IGNORE: &'static str = std::include_str!("../../.licensaignore");
+}
+
+const LICENSA_IGNORE_FILENAME: &str = ".licensaignore";
 
 const DEFAULT_CONFIG_FILENAME: &str = ".licensarc";
 const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
@@ -159,6 +166,26 @@ where
     P: AsRef<Path>,
 {
     resolve_any_path(workspace_root, POSSIBLE_CONFIG_FILENAMES).map_or(false, |p| true)
+}
+
+/// Save `.licensaignore` file to provided directory.
+pub fn save_workspace_ignore<P>(workspace_root: P) -> Result<()>
+where
+    P: AsRef<Path>,
+{
+    let workspace_root = workspace_root.as_ref();
+    verify_dir(workspace_root)?;
+
+    let ignore_path = workspace_root.join(LICENSA_IGNORE_FILENAME);
+    if ignore_path.exists() {
+        return Err(anyhow!(
+            ".licensaignore file already exists at '{}'",
+            workspace_root.display()
+        ));
+    }
+
+    fs::write(ignore_path, LICENSA_IGNORE.as_bytes())?;
+    Ok(())
 }
 
 #[cfg(test)]
