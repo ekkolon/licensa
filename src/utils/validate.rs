@@ -5,13 +5,13 @@ use std::ops::RangeInclusive;
 
 use crate::utils::current_year;
 
-const EARLIEST_LICENSE_YEAR: u16 = 1956;
+const EARLIEST_LICENSE_YEAR: u32 = 1956;
 const SECONDS_IN_YEAR: u64 = 365 * 24 * 60 * 60;
 
 /// Check whether a string slice represents a year that falls
 /// within range [EARLIEST_LICENSE_YEAR] and *current* year.
-pub fn acceptable_year(s: &str) -> Result<u16, String> {
-    let year: u16 = s
+pub fn acceptable_year(s: &str) -> Result<u32, String> {
+    let year: u32 = s
         .parse()
         .map_err(|_| format!("`{}` isn't a valid year", s))?;
 
@@ -61,7 +61,7 @@ where
 }
 
 #[inline]
-fn get_acceptable_year_range() -> RangeInclusive<u16> {
+fn get_acceptable_year_range() -> RangeInclusive<u32> {
     EARLIEST_LICENSE_YEAR..=current_year()
 }
 
