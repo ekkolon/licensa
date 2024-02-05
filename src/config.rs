@@ -7,7 +7,6 @@ use crate::schema::{LicenseHeaderFormat, LicenseId, LicenseYear};
 use anyhow::{anyhow, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
-
 use std::path::Path;
 
 /// Represents the container for a Licensa config file that may be
@@ -39,7 +38,7 @@ pub struct Config {
     /// licenses, and copyrights associated with software.
     ///
     /// See https://spdx.org/licenses/
-    #[arg(short = 't', long = "type")]
+    #[arg(short = 't', long = "type", value_parser = crate::parser::parse_license_id)]
     pub license: Option<LicenseId>,
 
     /// The copyright owner.
@@ -94,6 +93,7 @@ pub struct Config {
     ///
     /// This field is used to define the copyright duration when applying license headers.
     /// When providing a range, it signifies the inclusive span of years.
+    // TODO: impl parser in crate `parser` mod
     #[arg(long, value_name = "YYYY | YYYY-YYYY | YYYY-present")]
     pub year: Option<LicenseYear>,
 

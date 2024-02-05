@@ -1,9 +1,8 @@
 // Copyright 2021-present Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::error::exit_invalid_value_err;
-use crate::license::LicensesManifest;
 use crate::utils::validate::is_valid_year;
+use crate::{error::exit_invalid_value_err, spdx::try_find_by_id};
 
 use anyhow::anyhow;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -33,17 +32,19 @@ impl FromStr for LicenseId {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let trimmed = s.trim();
-        if trimmed.is_empty() {
-            Err(anyhow!("License ID cannot be empty"))
-        } else {
-            if !LicensesManifest::contains_id(s) {
-                let err_msg = format!("Invalid SPDX License ID '{}'", &s);
-                return Err(anyhow!(err_msg));
-            }
-
-            Ok(LicenseId(trimmed.to_string()))
+        let expr = s.trim();
+        if expr.is_empty() {
+            return Err(anyhow!("License ID cannot be empty"));
         }
+
+        let license_id = try_find_by_id(expr)?;
+        println!("try_find_by_id(): {:?}", license_id);
+        if license_id.is_none() {
+            let err_msg = format!("invalid SPDX License ID or expression '{}'", expr);
+            return Err(anyhow!(err_msg));
+        }
+
+        Ok(LicenseId(license_id.unwrap()))
     }
 }
 
@@ -75,14 +76,21 @@ impl<'de> Deserialize<'de> for LicenseId {
     where
         D: Deserializer<'de>,
     {
-        let license_id = String::deserialize(deserializer)?;
+        let input = String::deserialize(deserializer)?;
+        let input = input.trim_matches('"');
 
-        if !LicensesManifest::contains_id(&license_id) {
-            let err_msg = format!("Invalid License SPDX ID '{}'", &license_id);
+        let license_id = try_find_by_id(input);
+        if let Err(err) = license_id {
+            return Err(serde::de::Error::custom(err));
+        }
+
+        let license_id = license_id.unwrap();
+        if license_id.is_none() {
+            let err_msg = format!("invalid SPDX License ID or expression '{}'", input);
             return Err(serde::de::Error::custom(err_msg));
         }
 
-        Ok(LicenseId(license_id))
+        Ok(LicenseId(license_id.unwrap()))
     }
 }
 
