@@ -20,6 +20,9 @@ const BREAKWORDS: &[&str] = &[
     "copyright ",
 ];
 
+// FIXME: This is a simple, naive attempt to detect licene headers.
+// One improvement would be to only consider breakwords within
+// comment lines.
 pub fn has_copyright_notice(b: &[u8]) -> bool {
     let n = std::cmp::min(1000, b.len());
     let lower_b: Vec<u8> = b[..n].iter().map(|&c| c.to_ascii_lowercase()).collect();
