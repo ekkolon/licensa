@@ -93,8 +93,7 @@ pub struct Config {
     ///
     /// This field is used to define the copyright duration when applying license headers.
     /// When providing a range, it signifies the inclusive span of years.
-    // TODO: impl parser in crate `parser` mod
-    #[arg(long, value_name = "YYYY | YYYY-YYYY | YYYY-present")]
+    #[arg(long, value_name = "YYYY | YYYY-YYYY | YYYY-present", value_parser = crate::parser::parse_license_year)]
     pub year: Option<LicenseYear>,
 
     /// A list of glob patterns to exclude from the licensing process.
@@ -203,5 +202,30 @@ impl Config {
         }
 
         Ok(config)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    #[test]
+    fn test_config_invalid_license_year() {
+        let config = serde_json::from_value::<Config>(json!({
+            "year": 20033,
+        }));
+        assert!(config.is_err());
+
+        let config = serde_json::from_value::<Config>(json!({
+            "year": null,
+        }));
+        assert!(config.is_ok());
+
+        let config = serde_json::from_value::<Config>(json!({
+            "year": "2025-2024",
+        }));
+        assert!(config.is_err());
     }
 }

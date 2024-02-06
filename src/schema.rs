@@ -1,11 +1,12 @@
 // Copyright 2021-present Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use crate::spdx::try_find_by_id;
 use crate::utils::validate::is_valid_year;
-use crate::{error::exit_invalid_value_err, spdx::try_find_by_id};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use thiserror::Error;
 
 use std::{fmt, ops::Deref, str::FromStr};
 
@@ -98,7 +99,26 @@ impl<'de> Deserialize<'de> for LicenseId {
 // License year
 // =========================================================
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Error)]
+pub enum LicenseYearError {
+    #[error(
+        "license year must be a non-empty string in one of the following formats: YYYY, YYYY-YYYY, or YYYY-present"
+    )]
+    EmptyString,
+
+    #[error(
+        "invalid license year format {0}. Expected value in one of the following formats: YYYY, YYYY-YYYY, or YYYY-present"
+    )]
+    InvalidFormat(String),
+
+    #[error("{0} does not represent a calendar year")]
+    InvalidYear(String),
+
+    #[error("the starting year {0} of a license period must be less than the ending year {1} of the period")]
+    InvalidPeriod(u32, u32),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct LicenseYear {
     start: u32,
     end: Option<u32>,
@@ -107,80 +127,94 @@ pub struct LicenseYear {
 
 impl LicenseYear {
     // Constructor for single year
-    pub fn single_year(year: u32) -> Self {
+    pub fn single_year(year: u32) -> Result<Self, LicenseYearError> {
         if !is_valid_year(year) {
-            exit_invalid_value_err("year", &year.to_string(), None)
+            return Err(LicenseYearError::InvalidYear(year.to_string()));
         }
 
-        LicenseYear {
+        Ok(LicenseYear {
             start: year,
             end: None,
             is_present: false,
-        }
+        })
     }
 
     // Constructor for present
-    pub fn present_year(year: u32) -> Self {
-        if !is_valid_year(year) {
-            exit_invalid_value_err("year", &year.to_string(), None)
-        }
-
-        LicenseYear {
-            start: year,
-            end: None,
-            is_present: true,
-        }
+    pub fn present_year(year: u32) -> Result<Self, LicenseYearError> {
+        let mut license_year = LicenseYear::single_year(year)?;
+        license_year.is_present = true;
+        Ok(license_year)
     }
 
     // Constructor for range
-    pub fn year_range(start: u32, end: u32) -> Self {
-        if !is_valid_year(start) {
-            exit_invalid_value_err("start", &start.to_string(), None)
-        }
+    pub fn year_range(start: u32, end: u32) -> Result<Self, LicenseYearError> {
+        let mut license_year = LicenseYear::single_year(start)?;
+
         if !is_valid_year(end) {
-            exit_invalid_value_err("end", &end.to_string(), None)
+            return Err(LicenseYearError::InvalidYear(end.to_string()));
         }
 
-        LicenseYear {
-            start,
-            end: Some(end),
-            is_present: false,
+        if start >= end {
+            return Err(LicenseYearError::InvalidPeriod(start, end));
         }
-    }
 
-    // Add a validation method to check if the years are valid
-    pub fn is_valid(&self) -> bool {
-        if self.is_present {
-            true
-        } else if let Some(end) = self.end {
-            self.start <= end
-        } else {
-            true
-        }
+        license_year.end = Some(end);
+
+        Ok(license_year)
     }
 }
 
 impl FromStr for LicenseYear {
-    type Err = &'static str;
+    type Err = LicenseYearError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.split('-').collect();
-        match parts.len() {
-            1 => {
-                let year = parts[0].parse::<u32>().map_err(|_| "Invalid year")?;
-                Ok(LicenseYear::single_year(year))
-            }
-            2 => {
-                let start = parts[0].parse::<u32>().map_err(|_| "Invalid start year")?;
-                if parts[1] == "present" {
-                    Ok(LicenseYear::present_year(start))
-                } else {
-                    let end = parts[1].parse::<u32>().map_err(|_| "Invalid end year")?;
-                    Ok(LicenseYear::year_range(start, end))
-                }
-            }
-            _ => Err("Invalid format"),
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = value.split('-').collect();
+
+        if parts.is_empty() {
+            return Err(LicenseYearError::EmptyString);
         }
+
+        let num_parts = parts.len();
+        if num_parts > 2 {
+            return Err(LicenseYearError::InvalidFormat(value.to_string()));
+        }
+
+        let start = parts[0];
+        if !is_valid_year(start) {
+            return Err(LicenseYearError::InvalidYear(value.to_string()));
+        }
+        let start: u32 = start.parse().unwrap();
+
+        if num_parts == 1 {
+            return Ok(LicenseYear {
+                end: None,
+                is_present: false,
+                start,
+            });
+        }
+
+        let end = parts[1];
+        if end == "present" {
+            return Ok(LicenseYear {
+                end: None,
+                is_present: true,
+                start,
+            });
+        } else if !is_valid_year(end) {
+            return Err(LicenseYearError::InvalidYear(end.to_string()));
+        }
+
+        let end: u32 = end.parse().unwrap();
+
+        if start >= end {
+            return Err(LicenseYearError::InvalidPeriod(start, end));
+        }
+
+        Ok(LicenseYear {
+            end: Some(end),
+            is_present: false,
+            start,
+        })
     }
 }
 
@@ -216,21 +250,21 @@ impl<'de> Deserialize<'de> for LicenseYear {
             type Value = LicenseYear;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-                formatter.write_str("a string or an integer")
+                formatter.write_str("a string or an integer in one of the following formats: YYYY, YYYY-YYYY, or YYYY-present")
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                parse_string(value)
+                visit_string(value)
             }
 
             fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                parse_integer(value)
+                visit_int(value)
             }
         }
 
@@ -238,45 +272,119 @@ impl<'de> Deserialize<'de> for LicenseYear {
     }
 }
 
-fn parse_string<E>(value: &str) -> Result<LicenseYear, E>
+fn visit_string<E>(value: &str) -> Result<LicenseYear, E>
 where
     E: de::Error,
 {
-    if let Some(index) = value.find('-') {
-        let start = &value[..index];
-        let end = &value[(index + 1)..];
-
-        match (start.parse::<u32>(), end.parse::<u32>()) {
-            (Ok(start), Ok(end)) => Ok(LicenseYear {
-                start,
-                end: Some(end),
-                is_present: false,
-            }),
-            _ => Err(de::Error::custom("Invalid year range")),
-        }
-    } else if let Ok(start) = value.parse::<u32>() {
-        Ok(LicenseYear {
-            start,
-            end: None,
-            is_present: false,
-        })
-    } else {
-        Err(de::Error::custom(format!("Invalid year format: {}", value)))
-    }
+    LicenseYear::from_str(value).map_err(|err| de::Error::custom::<LicenseYearError>(err))
 }
 
-fn parse_integer<E>(value: u64) -> Result<LicenseYear, E>
+fn visit_int<E>(value: u64) -> Result<LicenseYear, E>
 where
     E: de::Error,
 {
-    // Parse as u16 and convert to LicenseYear
-    if is_valid_year(value) {
-        Ok(LicenseYear {
-            start: value as u32,
+    if !is_valid_year(value) {
+        return Err(de::Error::custom(LicenseYearError::InvalidYear(
+            value.to_string(),
+        )));
+    }
+
+    Ok(LicenseYear {
+        start: value as u32,
+        end: None,
+        is_present: false,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_license_year_single_int() {
+        let year: u32 = 2024;
+        let expected = LicenseYear {
             end: None,
             is_present: false,
-        })
-    } else {
-        Err(de::Error::custom("Negative value is not a valid year"))
+            start: 2024,
+        };
+
+        let parsed = visit_int::<de::value::Error>(u64::from(year));
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), expected)
+    }
+
+    fn test_parse_license_year_invalid_single_int() {
+        let year: u32 = 193;
+        let parsed = visit_int::<de::value::Error>(u64::from(year));
+        assert!(parsed.is_err());
+
+        let year: u32 = 20244;
+        let parsed = visit_int::<de::value::Error>(u64::from(year));
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_parse_license_year_invalid_range_start_equals_end() {
+        let period = "2022-2022";
+        let parsed = visit_string::<de::value::Error>(period);
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_parse_license_year_invalid_range_start_greater_end() {
+        let period = "2023-2022";
+        let parsed = visit_string::<de::value::Error>(period);
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_parse_license_year_invalid_string() {
+        let year = "209O";
+        let parsed = visit_string::<de::value::Error>(year);
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_parse_license_year_single_str() {
+        let year = "2024";
+        let expected = LicenseYear {
+            end: None,
+            is_present: false,
+            start: 2024,
+        };
+
+        let parsed = visit_string::<de::value::Error>(year);
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), expected)
+    }
+
+    #[test]
+    fn test_parse_license_year_to_year() {
+        let period = "2011-2014";
+        let expected = LicenseYear {
+            end: Some(2014),
+            is_present: false,
+            start: 2011,
+        };
+
+        let parsed = visit_string::<de::value::Error>(period);
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), expected)
+    }
+
+    #[test]
+    fn test_parse_license_year_to_present() {
+        let year_range = "2022-present";
+        let expected = LicenseYear {
+            end: None,
+            is_present: true,
+            start: 2022,
+        };
+
+        let parsed = visit_string::<de::value::Error>(year_range);
+
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), expected)
     }
 }
