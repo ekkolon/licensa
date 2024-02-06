@@ -16,6 +16,7 @@ include = [
     "LICENSE-APACHE",
     "LICENSE-MIT",
     "./README.md",
+    ".licensaignore"
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
