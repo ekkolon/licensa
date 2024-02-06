@@ -1,0 +1,13 @@
+[config]
+skip_core_tasks = true
+
+[tasks.coverage]
+description = "Generate code coverage report"
+command = "cargo"
+args = [
+    "llvm-cov",
+    "--lcov",
+    "--output-path",
+    "target/lcov.info",
+    "--no-default-features",
+]

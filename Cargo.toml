@@ -43,6 +43,7 @@ openssl = { version = "0.10", features = ["vendored"] }
 
 [badges]
 maintenance = { status = "experimental" }
+codecov = { repository = "ekkolon/licensa", branch = "main", service = "github" }
 
 [profile.dev]
 # Disabling debug info speeds up builds a bunch and we don't rely on it for debugging that much.
