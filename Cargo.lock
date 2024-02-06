@@ -500,6 +500,7 @@ dependencies = [
  "spdx",
  "tabled",
  "tempfile",
+ "thiserror",
  "url",
 ]
 
