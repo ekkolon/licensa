@@ -88,6 +88,12 @@ Optional, if present in .licensarc config file
 
 ## Installation
 
+### Cargo
+
+```shell
+cargo install licensa
+```
+
 ### Linux
 
 Licensa currently supports the following architectures:
@@ -109,7 +115,7 @@ This script will:
 
 For more details, you can review the [installation script](/scripts/install.sh) directly.
 
-### Windows
+### Windows (PowerShell)
 
 Before running the installation script, ensure that your PowerShell execution policy allows (remote) script execution. You can set the execution policy using the following command:
 
