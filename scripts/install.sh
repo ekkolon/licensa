@@ -6,11 +6,11 @@ function write_log {
     message=$2
 
     case $level in
-        "info")   foreground_color="\e[34m" ;;
-        "success") foreground_color="\e[32m" ;;
-        "warn")    foreground_color="\e[33m" ;;
-        "error")   foreground_color="\e[31m" ;;
-        *)         foreground_color="\e[97m" ;;  # Default to white
+    "info") foreground_color="\e[34m" ;;
+    "success") foreground_color="\e[32m" ;;
+    "warn") foreground_color="\e[33m" ;;
+    "error") foreground_color="\e[31m" ;;
+    *) foreground_color="\e[97m" ;; # Default to white
     esac
 
     timestamp=$(date +"%Y-%m-%d %H:%M:%S")
@@ -29,16 +29,16 @@ architecture=$(uname -m)
 
 # Adjust asset_name_unpacked based on architecture
 case "$architecture" in
-    "x86_64")
-        asset_name_unpacked="${bin_name}-${release_tag}-x86_64-linux"
-        ;;
-    "aarch64")
-        asset_name_unpacked="${bin_name}-${release_tag}-aarch64-linux"
-        ;;
-    *)
-        write_log "error" "Unsupported architecture: $architecture"
-        exit 1
-        ;;
+"x86_64")
+    asset_name_unpacked="${bin_name}-${release_tag}-x86_64-linux"
+    ;;
+"aarch64")
+    asset_name_unpacked="${bin_name}-${release_tag}-aarch64-linux"
+    ;;
+*)
+    write_log "error" "Unsupported architecture: $architecture"
+    exit 1
+    ;;
 esac
 
 asset_name_tar="${asset_name_unpacked}.tar.xz"
@@ -73,13 +73,9 @@ write_log "success" "Successfully unpacked $asset_name_tar"
 write_log "info" "Installing..."
 destination_path="/usr/local/bin"
 
-# HACK: the extracted folder in v0.1.0 is capitalized
-# TODO: Remove for new releases (including minor releases)  
-asset_name_unpacked="Licensa-${release_tag}-${architecture}-linux"
-source_folder="$downloads_folder/$asset_name_unpacked"
-
 # Move unpacked source to destination
 # TODO: Ask if should override, if path exists
+source_folder="$downloads_folder/$asset_name_unpacked"
 sudo cp -r "$source_folder"/* "$destination_path"
 
 # Remove downloaded tar.gz
