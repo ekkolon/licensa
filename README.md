@@ -11,9 +11,80 @@ As of today, Licensa boasts compatibility with over **65 file types**, making it
 
 ## Table of Contents
 
+- [CLI Reference](#cli-reference)
 - [Installation](#installation)
 - [License](#license)
 - [Contribution](#contribution)
+
+## CLI Reference
+
+### Commands
+
+#### `init`
+
+Generate project-wide Licensa configuration.
+
+```bash
+licensa init [OPTIONS]
+```
+
+#### `apply`
+
+Add SPDX copyright license headers to source code files.
+
+```bash
+licensa apply [OPTIONS]
+```
+
+#### `verify`
+
+Verify presence of license headers in source code files.
+
+```bash
+licensa verify
+```
+
+### Options
+
+**-t, --type** `required` SPDX License identifier (case-insensitive)
+
+Optional, if present in .licensarc config file
+
+*default*: N/A
+
+**-o, --owner** `required` The copyright owner
+
+Optional, if present in .licensarc config file
+
+*default*: N/A
+
+**--year** The copyright year or a range of years
+
+*default*: null
+
+**--exclude** A list of glob patterns to exclude from the licensing process
+
+*default*: [ ]
+
+**--email** The E-Mail of the copyright owner
+
+*default*: null
+
+**--project** The name of the project to be licensed
+  
+*default*: null
+
+**--project-url** URL of the project
+
+*default*: null
+
+#### Globals
+
+**--verbose** Detailed command output
+
+**-h, --help** Show help message
+
+**-v, --version** Show program's version number
 
 ## Installation
 
