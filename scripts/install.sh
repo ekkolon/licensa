@@ -21,7 +21,7 @@ function write_log {
 }
 
 # GitHub repository details
-version="0.1.1"
+version="0.1.2"
 bin_name="licensa"
 release_tag="v$version"
 
