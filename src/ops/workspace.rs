@@ -6,7 +6,7 @@ use crate::utils::{resolve_any_path, verify_dir, write_json};
 use anyhow::{anyhow, Result};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use std::borrow::Borrow;
 use std::fs;
@@ -129,6 +129,7 @@ where
     let workspace_root = workspace_root.as_ref();
     verify_dir(workspace_root)?;
     let config = serde_json::to_value(config.borrow())?;
+    let config = remove_null_fields(config);
     let config_path = workspace_root.join(DEFAULT_CONFIG_FILENAME);
     write_json(config_path, &config)?;
     Ok(())
@@ -188,9 +189,72 @@ where
     Ok(())
 }
 
+/// Recursively removes all fields with `null` values from a JSON object.
+///
+/// This function takes a serde_json Value representing a JSON object and recursively
+/// removes all fields with `null` values. If the input value is not an object or
+/// contains non-object values, it returns the value as is.
+///
+/// # Arguments
+///
+/// * `value` - A serde_json Value representing a JSON object.
+///
+/// # Returns
+///
+/// A serde_json Value with `null` fields removed.
+///
+/// # Examples
+///
+/// ```no_run,ignore
+/// use serde_json::{json, Value};
+/// use licensa::ops::workspace::remove_null_fields;
+///
+/// let json_value = json!({
+///     "name": "John",
+///     "age": null,
+///     "address": {
+///         "city": "New York",
+///         "zip": null
+///     },
+///     "scores": [10, null, 20]
+/// });
+///
+/// let cleaned_value = remove_null_fields(json_value);
+///
+/// assert_eq!(cleaned_value, json!({
+///     "name": "John",
+///     "address": {
+///         "city": "New York"
+///     },
+///     "scores": [10, null, 20]
+/// }));
+/// ```
+pub fn remove_null_fields(value: Value) -> Value {
+    match value {
+        Value::Null => Value::Null,
+        Value::Bool(_) => value,
+        Value::Number(_) => value,
+        Value::String(_) => value,
+        Value::Array(arr) => {
+            let cleaned_array: Vec<Value> = arr.into_iter().map(remove_null_fields).collect();
+            Value::Array(cleaned_array)
+        }
+        Value::Object(obj) => {
+            let mut cleaned_obj: Map<String, Value> = Map::new();
+            for (key, val) in obj {
+                if val != Value::Null {
+                    cleaned_obj.insert(key, remove_null_fields(val));
+                }
+            }
+            Value::Object(cleaned_obj)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     use std::{fs::File, io::Read};
     use tempfile::tempdir;
 
@@ -332,5 +396,45 @@ mod tests {
         // Test finding the config file when none exist
         let result: Result<Value> = resolve_workspace_config(target_dir);
         // assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_remove_null_fields() {
+        let json_value = json!({
+            "name": "John",
+            "age": null,
+            "address": {
+                "city": "New York",
+                "zip": null
+            },
+            "scores": [10, null, 20]
+        });
+
+        let cleaned_value = remove_null_fields(json_value.clone());
+
+        assert_eq!(
+            cleaned_value,
+            json!({
+                "name": "John",
+                "address": {
+                    "city": "New York"
+                },
+                "scores": [10, null, 20]
+            })
+        );
+
+        // Ensure input value is not modified
+        assert_eq!(
+            json_value,
+            json!({
+                "name": "John",
+                "age": null,
+                "address": {
+                    "city": "New York",
+                    "zip": null
+                },
+                "scores": [10, null, 20]
+            })
+        );
     }
 }
