@@ -67,6 +67,7 @@ impl WorkspaceWalk {
     }
 
     /// Sets a condition for sending results while walking the workspace.
+    #[inline]
     pub fn send_while<T>(&mut self, when: T) -> &Self
     where
         T: FnMut(WorkspaceWalkResult) -> bool + Send + 'static,
@@ -76,6 +77,7 @@ impl WorkspaceWalk {
     }
 
     /// Sets a condition for quitting the workspace walk.
+    #[inline]
     pub fn quit_while<T>(&mut self, when: T) -> &Self
     where
         T: FnMut(WorkspaceWalkResult) -> bool + Send + 'static,
@@ -85,6 +87,7 @@ impl WorkspaceWalk {
     }
 
     /// Sets the maximum capacity of the channel for collecting results.
+    #[inline]
     pub fn max_capacity(&mut self, limit: Option<usize>) -> &Self {
         if limit.is_none() && self.max_capacity.is_none() {
             return self;
@@ -93,6 +96,7 @@ impl WorkspaceWalk {
         self
     }
 
+    #[inline]
     fn chan<T>(&self) -> (Sender<T>, Receiver<T>) {
         match &self.max_capacity {
             None => crossbeam_channel::unbounded::<T>(),
@@ -143,12 +147,14 @@ impl WorkspaceWalkBuilder {
     }
 
     /// Sets whether to disable git ignore rules.
+    #[inline]
     pub fn disable_git_ignore(&mut self, yes: bool) -> &Self {
         self.walker_builder.git_ignore(!yes);
         self
     }
 
     /// Adds a custom ignore file.
+    #[inline]
     pub fn add_ignore<P>(&mut self, file_name: P) -> &Self
     where
         P: AsRef<OsStr>,
@@ -159,6 +165,7 @@ impl WorkspaceWalkBuilder {
     }
 
     /// Adds a set of glob patterns to the overrides.
+    #[inline]
     pub fn add_overrides(&mut self, patterns: &Vec<&'static str>) -> Result<()> {
         if !patterns.is_empty() {
             for pattern in patterns {
