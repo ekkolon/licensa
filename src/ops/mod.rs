@@ -3,5 +3,6 @@
 
 pub mod scan;
 pub mod stats;
+pub mod walk;
 pub mod work_tree;
 pub mod workspace;
