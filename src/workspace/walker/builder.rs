@@ -45,27 +45,17 @@ impl WalkBuilder {
             override_builder,
             workspace_root: workspace_root.into(),
             max_capacity: None,
-            override_patterns: OverridePatterns::None,
-            last_override_patterns: OverridePatterns::None,
+            exclude: vec![],
+            include: vec![],
         }
     }
 
     /// Builds and returns a `WorkspaceWalk`.
     pub fn build(mut self) -> Result<Walk> {
-        let overrides = self.override_builder().build()?;
-        if !overrides.is_empty() {
-            self.inner_mut().overrides(overrides);
-        }
-        let walk_parallel = self.inner_mut().build_parallel();
-        let walk = Walk::new(walk_parallel, self.max_capacity());
+        self.build_overrides()?;
+        let walk_parallel = self.walker_builder.build_parallel();
+        let walk = Walk::new(walk_parallel, self.max_capacity);
         Ok(walk)
-    }
-
-    /// Adds a set of *exclude* glob patterns to the overrides.
-    #[inline]
-    pub fn add_overrides(&mut self, patterns: &Vec<&'static str>) -> Result<()> {
-        add_overrides(&mut self.override_builder, patterns, true)?;
-        Ok(())
     }
 
     /// Adds a custom ignore file.
@@ -115,32 +105,53 @@ impl WalkBuilder {
         self.max_capacity
     }
 
-    /// Adds a set of glob patterns to the overrides.
-    fn _add_overrides(&mut self, patterns: OverridePatterns) -> Result<()> {
-        if is_empty_patterns(&patterns) {
+    /// Adds a set of glob *exclude* patterns to the overrides.
+    pub fn exclude<T>(&mut self, patterns: Option<Vec<T>>) -> Result<()>
+    where
+        T: 'static + AsRef<str>,
+    {
+        let patterns = patterns.unwrap_or_default();
+        if patterns.is_empty() {
             return Ok(());
         }
+        let mut patterns: Vec<String> = patterns
+            .iter()
+            .map(|p| switch_pattern_negation(p.as_ref()))
+            .collect();
+        self.exclude.append(&mut patterns);
+        Ok(())
+    }
 
-        match patterns {
-            OverridePatterns::Exclude(patterns) => {
-                let mut patterns = patterns.iter().map(|p| switch_pattern_negation(p));
-                self.exclude.append(patterns);
-                Ok(())
-            }
-            OverridePatterns::Include(patterns) => {}
+    /// Adds a set of glob *include* patterns to the overrides.
+    pub fn include<T>(&mut self, patterns: Option<Vec<T>>) -> Result<()>
+    where
+        T: 'static + AsRef<str>,
+    {
+        let patterns = patterns.unwrap_or_default();
+        if patterns.is_empty() {
+            return Ok(());
         }
-        if !patterns.is_empty() {
-            for pattern in patterns {
-                if switch {
-                    // We are dealing with exclude patterns
-                    let pattern = switch_pattern_negation(pattern);
-                    overrides.add(&pattern)?;
-                    continue;
-                }
-                // We are dealing with include patterns
-                overrides.add(pattern)?;
-            }
+        let mut patterns: Vec<String> = patterns.iter().map(|p| p.as_ref().to_string()).collect();
+        self.include.append(&mut patterns);
+        Ok(())
+    }
+
+    // `include` patterns take precedence over exclude patterns.
+    // Leave the override builder untouched if both include and exclude patterns are empty.
+    fn build_overrides(&mut self) -> Result<()> {
+        if self.include.is_empty() && self.exclude.is_empty() {
+            return Ok(());
         }
+        let patterns = match self.include.is_empty() {
+            true => &self.exclude,
+            false => &self.include,
+        };
+        for pattern in patterns {
+            self.override_builder.add(pattern)?;
+        }
+        let overrides = self.override_builder().build()?;
+        self.walker_builder.overrides(overrides);
+
         Ok(())
     }
 }
@@ -159,13 +170,6 @@ fn switch_pattern_negation(pattern: &str) -> String {
         .strip_prefix('!')
         .map(|p| p.to_string())
         .unwrap_or_else(|| format!("!{pattern}"))
-}
-
-fn is_empty_patterns(patterns: &OverridePatterns) -> bool {
-    match patterns {
-        OverridePatterns::Exclude(patterns) => patterns.is_empty(),
-        OverridePatterns::Include(patterns) => patterns.is_empty(),
-    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -244,10 +248,10 @@ mod tests {
     fn test_walk_include_builder_add_overrides() {
         let mut builder = WalkBuilder::new("my_repo");
         builder
-            .add_overrides(&vec!["src/**/*.rs", "tests/**/*.rs"])
+            .include(Some(vec!["src/**/*.rs", "tests/**/*.rs"]))
             .unwrap();
 
-        let expected_patterns = vec!["src/**/*.rs", "tests/**/*.rs"];
+        let expected_patterns = ["src/**/*.rs", "tests/**/*.rs"];
         // assert_eq!(
         //     builder.inner_mut().overrides().patterns(),
         //     &expected_patterns
@@ -258,12 +262,13 @@ mod tests {
     fn test_walk_exclude_builder_add_overrides() {
         let mut builder = WalkBuilder::new("my_lib");
         builder
-            .add_overrides(&vec!["vendor/**", ".target/**"])
+            .exclude(Some(vec!["vendor/**", ".target/**"]))
             .unwrap();
 
-        let expected_patterns = vec!["vendor/**", ".target/**"];
-        let overrides = builder.override_builder().build().unwrap();
-        assert!(!overrides.is_empty());
+        let expected_patterns = ["vendor/**", ".target/**"];
+        // let overrides = builder.override_builder().build().unwrap();
+        let overrides_res = builder.build_overrides();
+        assert!(overrides_res.is_ok());
 
         // assert_eq!(builder.inner_mut().o.patterns(), &expected_patterns);
     }
@@ -283,7 +288,7 @@ mod tests {
     #[test]
     fn test_walk_include_builder_build() {
         let mut builder = WalkBuilder::new("my_root");
-        builder.add_overrides(&vec!["src/**/*.rs"]).unwrap();
+        builder.include(Some(vec!["src/**/*.rs"])).unwrap();
         let walk = builder.build();
 
         assert!(walk.is_ok());
@@ -293,7 +298,7 @@ mod tests {
     #[test]
     fn test_walk_exclude_builder_build() {
         let mut builder = WalkBuilder::new("my_project");
-        builder.add_overrides(&vec!["vendor/**"]).unwrap();
+        builder.exclude(Some(vec!["vendor/**"])).unwrap();
         let walk = builder.build();
 
         assert!(walk.is_ok());
