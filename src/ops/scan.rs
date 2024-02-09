@@ -10,7 +10,7 @@ use ignore::{DirEntry, WalkState};
 use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 
-use crate::workspace::walker::{Buildable as _, Overridable as _, Walk, WalkBuilder};
+use crate::workspace::walker::{Walk, WalkBuilder};
 
 /// Default filename for the `Licensa` CLI ignore patterns.
 const LICENSA_IGNORE_FILE: &str = ".licensaignore";
@@ -37,12 +37,11 @@ pub struct Scan {
 impl Scan {
     /// Creates a new [Scan] instance of with the given configuration.
     pub fn new(config: ScanConfig) -> Self {
-        let exclude = &config.exclude.clone().unwrap_or_default();
+        let exclude = config.exclude.clone().unwrap_or_default();
         let mut walk_builder = WalkBuilder::new(&config.root);
         walk_builder.add_ignore(LICENSA_IGNORE_FILE);
 
-        let mut walk_builder = walk_builder.into_exclude();
-        walk_builder.add_overrides(exclude).unwrap();
+        walk_builder.exclude(Some(exclude)).unwrap();
         let walker = walk_builder.build().unwrap();
 
         Self { config, walker }
@@ -177,8 +176,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workspace::walker::{Buildable as _, Overridable as _, WalkExcludeBuilder};
+    use crate::workspace::walker::WalkBuilder;
 
+    #[allow(unused_imports)]
     use rayon::prelude::*;
     use std::env::current_dir;
     use std::fs::File;
@@ -197,10 +197,10 @@ mod tests {
             root: current_dir().unwrap(),
         };
 
-        let exclude = &config.exclude.clone().unwrap_or_default();
-        let mut walk_builder = WalkExcludeBuilder::new(&config.root);
+        let exclude = config.exclude.clone().unwrap_or_default();
+        let mut walk_builder = WalkBuilder::new(&config.root);
         walk_builder.add_ignore(LICENSA_IGNORE_FILE);
-        walk_builder.add_overrides(exclude).unwrap();
+        walk_builder.exclude(Some(exclude)).unwrap();
 
         let mut walker = walk_builder.build().unwrap();
         walker.quit_while(|res| res.is_err());
