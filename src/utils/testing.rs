@@ -10,6 +10,10 @@ use tempfile::{tempdir, TempDir};
 
 pub fn create_temp_file<N: AsRef<Path>>(name: N) -> (TempDir, PathBuf) {
     let tmp_dir = tempdir().unwrap();
+    create_temp_file_in_dir(tmp_dir, name)
+}
+
+pub fn create_temp_file_in_dir<N: AsRef<Path>>(tmp_dir: TempDir, name: N) -> (TempDir, PathBuf) {
     let tmp_file = &tmp_dir.path().to_path_buf();
     let tmp_file = tmp_file.join::<PathBuf>(name.as_ref().into());
     File::create(&tmp_file).unwrap();

@@ -3,6 +3,8 @@
 
 //! Licensa configuration file parser and utils
 
+pub mod walker;
+
 use crate::schema::{LicenseId, LicenseYear};
 
 use serde::{Deserialize, Serialize};

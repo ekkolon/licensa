@@ -100,7 +100,7 @@ pub struct Config {
     ///
     /// Defining patterns here is synonymous to adding them either to
     /// the `.gitignore` or `.licensaignore` file.
-    #[arg(long)]
+    #[arg(long, value_delimiter = ' ', num_args = 1..)]
     pub exclude: Option<Vec<String>>,
 }
 
@@ -174,22 +174,11 @@ impl Config {
         self.year.as_ref()
     }
 
-    /// Try to resolve workspace configuration and merge those with defaults.
+    /// Try to resolve workspace configuration and merge those with self.
     pub fn with_workspace_config<T>(&mut self, workspace_root: T) -> Result<Config>
     where
         T: AsRef<Path>,
     {
-        let mut merge_config = Config::from_defaults();
-        merge_config.update(self.clone());
-        Self::from_workspace_config(workspace_root, Some(merge_config))
-    }
-
-    /// Try to resolve workspace configuration and merge those with defaults.
-    pub fn from_workspace_config<T>(workspace_root: T, initial: Option<Config>) -> Result<Config>
-    where
-        T: AsRef<Path>,
-    {
-        let mut config = initial.unwrap_or(Config::from_defaults());
         let ws = find_workspace_config(workspace_root.as_ref());
         if let Ok(ws) = ws {
             let parsed = serde_json::from_str::<Config>(&ws);
@@ -198,10 +187,12 @@ impl Config {
                 return Err(anyhow!("Failed to parse Licensa config file.\n {}", err));
             }
 
-            config.update(parsed.unwrap());
+            let mut ws_config = parsed.unwrap();
+            ws_config.update(self.to_owned());
+            return Ok(ws_config);
         }
 
-        Ok(config)
+        Ok(self.to_owned())
     }
 }
 

@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::template::header::SourceHeaders;
+use rayon::prelude::*;
 
-use anyhow::Result;
 use crossbeam_channel::Receiver;
-use ignore::{DirEntry, WalkBuilder, WalkState};
+use ignore::{DirEntry, WalkState};
 
 use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
+
+use crate::workspace::walker::{Walk, WalkBuilder};
 
 /// Default filename for the `Licensa` CLI ignore patterns.
 const LICENSA_IGNORE_FILE: &str = ".licensaignore";
@@ -20,25 +22,43 @@ pub struct ScanConfig {
     pub root: PathBuf,
 
     /// Optional list of paths to exclude from the scan.
-    pub exclude: Option<Vec<PathBuf>>,
+    pub exclude: Option<Vec<&'static str>>,
 
     /// Limit on the number of parallel scan operations.
     pub limit: usize,
 }
 
 /// Represents a scanning operation.
-#[derive(Debug)]
 pub struct Scan {
     config: ScanConfig,
-    walker: WalkBuilder,
+    walker: Walk,
 }
 
 impl Scan {
     /// Creates a new [Scan] instance of with the given configuration.
     pub fn new(config: ScanConfig) -> Self {
-        let walker = build_walker(&config).expect("Failed to build scan walker");
+        let exclude = config.exclude.clone().unwrap_or_default();
+        let mut walk_builder = WalkBuilder::new(&config.root);
+        walk_builder.add_ignore(LICENSA_IGNORE_FILE);
+
+        walk_builder.exclude(Some(exclude)).unwrap();
+        let walker = walk_builder.build().unwrap();
 
         Self { config, walker }
+    }
+
+    pub fn find_candidates(mut self) -> Vec<DirEntry> {
+        self.walker.quit_while(|res| res.is_err());
+        self.walker
+            .send_while(|res| res.is_ok() && is_candidate(res.unwrap()));
+        self.walker.max_capacity(None);
+        self.walker
+            .run_task()
+            .iter()
+            .par_bridge()
+            .into_par_iter()
+            .filter_map(Result::ok)
+            .collect()
     }
 
     /// Runs the scan in parallel and returns a receiver for receiving file entries.
@@ -48,14 +68,10 @@ impl Scan {
     /// # Errors
     ///
     /// Returns an error if there are issues with building or running the parallel walker.
-    pub fn run(&self) -> Receiver<FileEntry> {
+    pub fn run(self) -> Receiver<FileEntry> {
         let (tx, rx) = crossbeam_channel::bounded::<FileEntry>(self.config.limit);
-
-        // Start the scan in parallel
-        let walker = self.walker.build_parallel();
-        walker.run(|| {
+        self.walker.run(|| {
             let tx = tx.clone();
-
             Box::new(move |result| {
                 if result.is_err() {
                     return WalkState::Quit;
@@ -116,7 +132,7 @@ impl From<&DirEntry> for FileEntry {
 }
 
 /// Checks if a directory entry is a candidate for applying a license.
-fn is_candidate<E>(entry: E) -> bool
+pub fn is_candidate<E>(entry: E) -> bool
 where
     E: Borrow<DirEntry>,
 {
@@ -134,39 +150,6 @@ where
 
     let lookup_name = get_path_suffix(path);
     SourceHeaders::find_header_definition_by_extension(&lookup_name).is_some()
-}
-
-/// Builds a WalkBuilder with the specified configuration.
-///
-/// This function takes a `ScanConfig` as input and creates a `WalkBuilder` configured
-/// with the specified root directory and exclusion patterns. It also adds the `.licensaignore`
-/// file to the custom ignore list, ensuring that patterns in this file take precedence over
-/// other ignore files.
-///
-/// # Arguments
-///
-/// * `config` - The `ScanConfig` containing the root directory and optional exclusion paths.
-///
-/// # Returns
-///
-/// A `Result` containing the configured `WalkBuilder` if successful, or an `anyhow::Error` otherwise.
-fn build_walker(config: &ScanConfig) -> Result<WalkBuilder> {
-    let mut walker = WalkBuilder::new(&config.root);
-
-    if let Some(exclude_paths) = &config.exclude {
-        if !exclude_paths.is_empty() {
-            for path in exclude_paths {
-                walker.add_ignore(path);
-            }
-        }
-    }
-
-    // Add `.licensaignore` file. This must come last because the patterns
-    // defined in this file should take precedence over other ignore files.
-    let licensaignore = &config.root.join(LICENSA_IGNORE_FILE);
-    walker.add_custom_ignore_filename(licensaignore);
-
-    Ok(walker.to_owned())
 }
 
 #[inline]
@@ -193,13 +176,47 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::workspace::walker::WalkBuilder;
 
+    #[allow(unused_imports)]
+    use rayon::prelude::*;
+    use std::env::current_dir;
     use std::fs::File;
     use std::io::Write;
 
     // Helper function to create temporary directory and files
     fn create_temp_dir() -> tempfile::TempDir {
         tempfile::tempdir().expect("Failed to create temporary directory")
+    }
+
+    #[test]
+    fn test_example_scan() {
+        let config = ScanConfig {
+            exclude: Some(vec!["!**/target/*.py"]), // "!**/*.py", "!**/*.sh"
+            limit: 200,
+            root: current_dir().unwrap(),
+        };
+
+        let exclude = config.exclude.clone().unwrap_or_default();
+        let mut walk_builder = WalkBuilder::new(&config.root);
+        walk_builder.add_ignore(LICENSA_IGNORE_FILE);
+        walk_builder.exclude(Some(exclude)).unwrap();
+
+        let mut walker = walk_builder.build().unwrap();
+        walker.quit_while(|res| res.is_err());
+        walker.send_while(|res| res.is_ok() && is_candidate(res.unwrap()));
+        walker.max_capacity(None);
+
+        let result = walker.run_task();
+        let result = result.into_iter();
+        let entries: Vec<String> = result
+            .par_bridge()
+            .into_par_iter()
+            .filter_map(|res| res.ok())
+            .map(|res| res.file_name().to_str().unwrap().to_owned())
+            .collect();
+
+        println!("{:#?}", entries);
     }
 
     #[test]
@@ -256,4 +273,7 @@ mod tests {
         // Assert that the result is Ok and the candidates list is empty
         // TODO implement
     }
+
+    #[test]
+    fn test_parallel_file_tree_walker() {}
 }

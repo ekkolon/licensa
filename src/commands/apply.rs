@@ -3,13 +3,14 @@
 
 use crate::config::Config;
 use crate::error;
-use crate::ops::scan::{get_path_suffix, Scan, ScanConfig};
+use crate::ops::scan::{get_path_suffix, is_candidate, ScanConfig};
 use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::ops::work_tree::{FileTaskResponse, WorkTree};
 use crate::template::cache::{Cachable, Cache};
 use crate::template::copyright::SPDX_COPYRIGHT_NOTICE;
 use crate::template::has_copyright_notice;
 use crate::template::header::{extract_hash_bang, SourceHeaders};
+use crate::workspace::walker::WalkBuilder;
 use crate::workspace::LicensaWorkspace;
 
 use anyhow::Result;
@@ -70,7 +71,7 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     // ========================================================
     // Scanning process
     // ========================================================
-    let candidates = scan_workspace(&workspace_root)?;
+    let candidates = scan_workspace(&workspace_root, &workspace_config)?;
 
     runner_stats.set_items(candidates.len());
 
@@ -128,7 +129,7 @@ impl Cachable for HeaderTemplate {
 }
 
 // FIXME: Refactor to more generic, re-usable fn
-fn scan_workspace<P>(workspace_root: P) -> Result<Vec<PathBuf>>
+fn scan_workspace<P>(workspace_root: P, config: &LicensaWorkspace) -> Result<Vec<PathBuf>>
 where
     P: AsRef<Path>,
 {
@@ -140,14 +141,21 @@ where
         root: workspace_root.as_ref().to_path_buf(),
     };
 
-    let scan = Scan::new(scan_config);
+    let mut walk_builder = WalkBuilder::new(&workspace_root);
+    walk_builder.exclude(Some(config.exclude.clone()))?;
 
-    let candidates: Vec<PathBuf> = scan
-        .run()
-        .into_iter()
+    let mut walker = walk_builder.build()?;
+    walker.quit_while(|res| res.is_err());
+    walker.send_while(|res| is_candidate(res.unwrap()));
+
+    let candidates = walker
+        .run_task()
+        .iter()
         .par_bridge()
-        .map(|entry| entry.abspath)
-        .collect();
+        .into_par_iter()
+        .filter_map(Result::ok)
+        .map(|e| e.path().to_path_buf())
+        .collect::<Vec<PathBuf>>();
 
     Ok(candidates)
 }
