@@ -6,11 +6,10 @@ use crate::ops::scan::{is_candidate, Scan, ScanConfig};
 use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::ops::work_tree::{FileTaskResponse, WorkTree};
 use crate::template::has_copyright_notice;
-use crate::workspace::walker::{Buildable, WalkBuilder, WalkExcludeBuilder};
+use crate::workspace::walker::WalkBuilder;
 
 use anyhow::Result;
 use clap::Args;
-use ignore::DirEntry;
 use rayon::prelude::*;
 
 use std::env::current_dir;
@@ -21,40 +20,28 @@ pub fn run(args: &mut VerifyArgs) -> anyhow::Result<()> {
     let mut runner_stats = WorkTreeRunnerStatistics::new("verify", "found");
 
     let workspace_root = current_dir()?;
-    let workspace_config = &args.config.with_workspace_config(&workspace_root)?;
+    let config = &args.config.with_workspace_config(&workspace_root)?;
 
     // ========================================================
     // Scanning process
     // ========================================================
-    let walk_builder = workspace_config.exclude.map_or_else(
-        || WalkBuilder::new(&workspace_root),
-        |patterns| {
-            let mut builder = WalkExcludeBuilder::new(workspace_root);
-            let patterns: Vec<&str> = patterns.iter().map(|p| p.as_str()).collect();
-            builder.add_overrides(&patterns);
-            builder
-        },
-    );
+
+    let mut walk_builder = WalkBuilder::new(&workspace_root);
+    walk_builder.exclude(config.exclude.clone())?;
 
     let mut walker = walk_builder.build()?;
     walker.quit_while(|res| res.is_err());
     walker.send_while(|res| is_candidate(res.unwrap()));
     walker.max_capacity(None);
 
-    let candidates: Vec<DirEntry> = walker
+    let candidates = walker
         .run_task()
         .iter()
         .par_bridge()
         .into_par_iter()
         .filter_map(Result::ok)
-        .collect();
-
-    let (candidates, duration) = measure_time_result(|| scan_workspace(&workspace_root))?;
-    println!(
-        "EXEC_TIME::scan_workspace(): {:.2?}",
-        duration.as_secs_f64()
-    );
-    println!("NUM CANDIDATES: {}", candidates.len());
+        .map(|e| e.path().to_path_buf())
+        .collect::<Vec<PathBuf>>();
 
     runner_stats.set_items(candidates.len());
 
