@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::template::header::SourceHeaders;
+use rayon::prelude::*;
 
 use crossbeam_channel::Receiver;
 use ignore::{DirEntry, WalkState};
@@ -9,7 +10,7 @@ use ignore::{DirEntry, WalkState};
 use std::borrow::Borrow;
 use std::path::{Path, PathBuf};
 
-use super::walk::{WorkspaceWalk, WorkspaceWalkBuilder};
+use crate::workspace::walker::{Buildable as _, Overridable as _, Walk, WalkBuilder};
 
 /// Default filename for the `Licensa` CLI ignore patterns.
 const LICENSA_IGNORE_FILE: &str = ".licensaignore";
@@ -30,18 +31,35 @@ pub struct ScanConfig {
 /// Represents a scanning operation.
 pub struct Scan {
     config: ScanConfig,
-    walker: WorkspaceWalk,
+    walker: Walk,
 }
 
 impl Scan {
     /// Creates a new [Scan] instance of with the given configuration.
     pub fn new(config: ScanConfig) -> Self {
         let exclude = &config.exclude.clone().unwrap_or_default();
-        let mut walk_builder = WorkspaceWalkBuilder::new(&config.root);
+        let mut walk_builder = WalkBuilder::new(&config.root);
         walk_builder.add_ignore(LICENSA_IGNORE_FILE);
+
+        let mut walk_builder = walk_builder.into_exclude();
         walk_builder.add_overrides(exclude).unwrap();
         let walker = walk_builder.build().unwrap();
+
         Self { config, walker }
+    }
+
+    pub fn find_candidates(mut self) -> Vec<DirEntry> {
+        self.walker.quit_while(|res| res.is_err());
+        self.walker
+            .send_while(|res| res.is_ok() && is_candidate(res.unwrap()));
+        self.walker.max_capacity(None);
+        self.walker
+            .run_task()
+            .iter()
+            .par_bridge()
+            .into_par_iter()
+            .filter_map(Result::ok)
+            .collect()
     }
 
     /// Runs the scan in parallel and returns a receiver for receiving file entries.
@@ -115,7 +133,7 @@ impl From<&DirEntry> for FileEntry {
 }
 
 /// Checks if a directory entry is a candidate for applying a license.
-fn is_candidate<E>(entry: E) -> bool
+pub fn is_candidate<E>(entry: E) -> bool
 where
     E: Borrow<DirEntry>,
 {
@@ -158,10 +176,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
-
     use super::*;
+    use crate::workspace::walker::{Buildable as _, Overridable as _, WalkExcludeBuilder};
 
+    use rayon::prelude::*;
     use std::env::current_dir;
     use std::fs::File;
     use std::io::Write;
@@ -180,10 +198,9 @@ mod tests {
         };
 
         let exclude = &config.exclude.clone().unwrap_or_default();
-        let mut walk_builder = WorkspaceWalkBuilder::new(&config.root);
+        let mut walk_builder = WalkExcludeBuilder::new(&config.root);
         walk_builder.add_ignore(LICENSA_IGNORE_FILE);
         walk_builder.add_overrides(exclude).unwrap();
-        walk_builder.disable_git_ignore(true);
 
         let mut walker = walk_builder.build().unwrap();
         walker.quit_while(|res| res.is_err());

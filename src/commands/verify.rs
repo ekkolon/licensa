@@ -2,29 +2,59 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::config::Config;
-use crate::ops::scan::{Scan, ScanConfig};
+use crate::ops::scan::{is_candidate, Scan, ScanConfig};
 use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::ops::work_tree::{FileTaskResponse, WorkTree};
 use crate::template::has_copyright_notice;
+use crate::workspace::walker::{Buildable, WalkBuilder, WalkExcludeBuilder};
 
 use anyhow::Result;
 use clap::Args;
+use ignore::DirEntry;
 use rayon::prelude::*;
 
 use std::env::current_dir;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-pub fn run(args: &VerifyArgs) -> anyhow::Result<()> {
+pub fn run(args: &mut VerifyArgs) -> anyhow::Result<()> {
     let mut runner_stats = WorkTreeRunnerStatistics::new("verify", "found");
 
     let workspace_root = current_dir()?;
-    let workspace_config = args.config.clone().with_workspace_config(&workspace_root)?;
+    let workspace_config = &args.config.with_workspace_config(&workspace_root)?;
 
     // ========================================================
     // Scanning process
     // ========================================================
-    let candidates = scan_workspace(&workspace_root)?;
+    let walk_builder = workspace_config.exclude.map_or_else(
+        || WalkBuilder::new(&workspace_root),
+        |patterns| {
+            let mut builder = WalkExcludeBuilder::new(workspace_root);
+            let patterns: Vec<&str> = patterns.iter().map(|p| p.as_str()).collect();
+            builder.add_overrides(&patterns);
+            builder
+        },
+    );
+
+    let mut walker = walk_builder.build()?;
+    walker.quit_while(|res| res.is_err());
+    walker.send_while(|res| is_candidate(res.unwrap()));
+    walker.max_capacity(None);
+
+    let candidates: Vec<DirEntry> = walker
+        .run_task()
+        .iter()
+        .par_bridge()
+        .into_par_iter()
+        .filter_map(Result::ok)
+        .collect();
+
+    let (candidates, duration) = measure_time_result(|| scan_workspace(&workspace_root))?;
+    println!(
+        "EXEC_TIME::scan_workspace(): {:.2?}",
+        duration.as_secs_f64()
+    );
+    println!("NUM CANDIDATES: {}", candidates.len());
 
     runner_stats.set_items(candidates.len());
 
@@ -77,14 +107,11 @@ where
     };
 
     let scan = Scan::new(scan_config);
-
-    let candidates: Vec<PathBuf> = scan
-        .run()
-        .into_iter()
-        .par_bridge()
-        .map(|entry| entry.abspath)
+    let candidates = scan
+        .find_candidates()
+        .par_iter()
+        .map(|e| e.path().to_path_buf())
         .collect();
-
     Ok(candidates)
 }
 
@@ -95,4 +122,26 @@ fn read_entry(context: &mut ScanContext, response: &FileTaskResponse) {
     } else {
         runner_stats.add_ignore();
     }
+}
+
+use std::time::{Duration, Instant};
+
+fn measure_time<F, T>(func: F) -> (T, Duration)
+where
+    F: FnOnce() -> T,
+{
+    let start = Instant::now();
+    let result = func();
+    let duration = start.elapsed();
+    (result, duration)
+}
+
+fn measure_time_result<F, T>(func: F) -> Result<(T, Duration)>
+where
+    F: FnOnce() -> Result<T>,
+{
+    let start = Instant::now();
+    let result = func()?;
+    let duration = start.elapsed();
+    Ok((result, duration))
 }

@@ -14,17 +14,17 @@ fn main() -> Result<()> {
 fn run() -> Result<()> {
     let cli = Cli::parse();
 
-    match &cli.command {
+    match cli.command {
         Command::Init(args) => {
-            commands::init::run(args)?;
+            commands::init::run(&args)?;
         }
 
         Command::Apply(args) => {
-            commands::apply::run(args)?;
+            commands::apply::run(&args)?;
         }
 
-        Command::Verify(args) => {
-            commands::verify::run(args)?;
+        Command::Verify(mut args) => {
+            commands::verify::run(&mut args)?;
         }
     };
 
