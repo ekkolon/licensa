@@ -7,7 +7,6 @@ use crate::ops::workspace::{
     save_workspace_config, save_workspace_ignore, throw_workspace_config_exists,
 };
 use crate::schema::LicenseId;
-use crate::workspace::LicensaWorkspace;
 
 use anyhow::Result;
 use clap::Args;
@@ -23,8 +22,10 @@ pub struct InitArgs {
 }
 
 impl InitArgs {
-    pub fn to_config(&self) -> Result<Config> {
-        Ok(Config::default())
+    pub fn into_config(&self) -> Result<Config> {
+        let mut config = Config::default();
+        config.update(self.config.clone());
+        Ok(config)
     }
 }
 
@@ -35,9 +36,7 @@ pub fn run(args: &InitArgs) -> Result<()> {
         exit_io_error(err);
     }
 
-    let mut config = args.config.clone().with_workspace_config(&workspace_root)?;
-
-    println!("{:?}", &config);
+    let mut config = args.into_config()?;
 
     if config.license.is_none() {
         let license_id = prompt_license_selection()?;
@@ -48,11 +47,8 @@ pub fn run(args: &InitArgs) -> Result<()> {
         let _ = config.owner.insert(owner);
     }
 
-    // FIXME: Invalid range error when using format YYYY-present
-    // TODO: check year
-
     let workspace_config = serde_json::to_value(config)?;
-    let workspace_config: LicensaWorkspace = serde_json::from_value(workspace_config)?;
+    let workspace_config: Config = serde_json::from_value(workspace_config)?;
     save_workspace_config(&workspace_root, workspace_config)?;
     save_workspace_ignore(workspace_root)?;
 
