@@ -3,6 +3,7 @@
 
 //! Licensa configuration file parser and utils
 
+pub mod error;
 pub mod walker;
 
 use crate::schema::{LicenseId, LicenseYear};
