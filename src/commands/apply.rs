@@ -3,7 +3,7 @@
 
 use crate::config::Config;
 use crate::error;
-use crate::ops::scan::{get_path_suffix, is_candidate, ScanConfig};
+use crate::ops::scan::{get_path_suffix, is_candidate};
 use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::ops::work_tree::{FileTaskResponse, WorkTree};
 use crate::template::cache::{Cachable, Cache};
@@ -133,14 +133,6 @@ fn scan_workspace<P>(workspace_root: P, config: &LicensaWorkspace) -> Result<Vec
 where
     P: AsRef<Path>,
 {
-    let scan_config = ScanConfig {
-        // FIXME: Add limit to workspace config
-        limit: 100,
-        // FIXME: Use exclude from workspace config
-        exclude: None,
-        root: workspace_root.as_ref().to_path_buf(),
-    };
-
     let mut walk_builder = WalkBuilder::new(&workspace_root);
     walk_builder.exclude(Some(config.exclude.clone()))?;
 
