@@ -265,20 +265,6 @@ Optional, if present in .licensarc config file
 
 **--exclude** A list of glob patterns to exclude from the licensing process
 
-*default*: [ ]
-
-**--email** The E-Mail of the copyright owner
-
-*default*: null
-
-**--project** The name of the project to be licensed
-
-*default*: null
-
-**--project-url** URL of the project
-
-*default*: null
-
 #### Globals
 
 **--verbose** Detailed command output
