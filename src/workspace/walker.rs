@@ -1,30 +1,135 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! # Walk
-//!
-//! This module provides functionality for walking through workspaces,
-//! interacting with directory entries, and performing various tasks
-//! based on the results received from a `WorkspaceWalk` task execution.
-
-use std::{
-    ffi::OsStr,
-    path::{Path, PathBuf},
-};
+//! This module provides tools for efficiently walking through a directory tree,
+//! filtering entries based on various criteria and providing control over the walk flow.
 
 use anyhow::Result;
-use ignore::{overrides::OverrideBuilder, WalkBuilder as InternalWalkBuilder};
+use crossbeam_channel::{Receiver, Sender};
+use ignore::overrides::OverrideBuilder;
+use ignore::{DirEntry, WalkBuilder as InternalWalkBuilder, WalkParallel, WalkState};
 
-use super::walk::Walk;
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
+/// Represents the result of visiting a directory entry during the walk.
+///
+/// It's either Ok(DirEntry) containing the entry information or
+/// Err(ignore::Error) if an error occurred.
+pub type WalkResult = Result<DirEntry, ignore::Error>;
+
+/// A closure type that receives a WalkResult and returns a WalkState indicating how
+/// the walk should proceed.
+pub type FnVisitor<'s> = Box<dyn FnMut(WalkResult) -> WalkState + Send + 's>;
+
+type WalkPredicate = Arc<dyn Fn(WalkResult) -> bool + Send + Sync + 'static>;
+
+/// Represents a workspace walker.
+///
+/// This type allows configuring and executing walks through a workspace directory tree,
+/// filtering entries based on conditions and controlling the walk flow.
+pub struct Walk {
+    inner: WalkParallel,
+    max_capacity: Option<usize>,
+    quit_while: WalkPredicate,
+    send_while: WalkPredicate,
+}
+
+impl Walk {
+    pub fn new(inner: WalkParallel, max_capacity: Option<usize>) -> Self {
+        Self {
+            inner,
+            max_capacity,
+            quit_while: Arc::new(|_| false),
+            send_while: Arc::new(|_| true),
+        }
+    }
+
+    /// Executes the walk using the provided FnVisitor closure to process each directory entry.
+    pub fn run<'a, F>(self, visit: F)
+    where
+        F: FnMut() -> FnVisitor<'a>,
+    {
+        self.inner.run(visit)
+    }
+
+    /// Starts the walk asynchronously and returns a receiver for collecting [WalkResult]s.
+    pub fn run_task(self) -> Receiver<WalkResult> {
+        let (tx, rx) = self.chan::<WalkResult>();
+        self.inner.run(|| {
+            let tx = tx.clone();
+            let quit_fn = self.quit_while.clone();
+            let send_fn = self.send_while.clone();
+            Box::new(move |result| {
+                if quit_fn(result.clone()) {
+                    return WalkState::Quit;
+                }
+                if send_fn(result.clone()) {
+                    tx.send(result.clone()).unwrap();
+                }
+                WalkState::Continue
+            })
+        });
+
+        rx
+    }
+
+    /// Sets a condition (closure) for deciding when to send directory entries
+    /// to the receiver during the walk.
+    #[inline]
+    pub fn send_while<T>(&mut self, when: T) -> &Self
+    where
+        T: Fn(WalkResult) -> bool + Sync + Send + 'static,
+    {
+        self.send_while = Arc::new(when);
+        self
+    }
+
+    /// Sets a condition (closure) for stopping the walk early.
+    #[inline]
+    pub fn quit_while<T>(&mut self, when: T) -> &Self
+    where
+        T: Fn(WalkResult) -> bool + Sync + Send + 'static,
+    {
+        self.quit_while = Arc::new(when);
+        self
+    }
+
+    /// Sets the optional maximum capacity for the receiver in when using `run_task`.
+    #[inline]
+    pub fn max_capacity(&mut self, limit: Option<usize>) -> &Self {
+        if limit.is_none() && self.max_capacity.is_none() {
+            return self;
+        }
+        self.max_capacity = limit;
+        self
+    }
+
+    #[inline]
+    fn chan<T>(&self) -> (Sender<T>, Receiver<T>) {
+        match &self.max_capacity {
+            None => crossbeam_channel::unbounded::<T>(),
+            Some(cap) => crossbeam_channel::bounded::<T>(*cap),
+        }
+    }
+}
+
+/// A builder for configuring and creating a `Walk` instance.
+///
+/// This type allows setting the workspace root, exclusion/inclusion patterns,
+/// and other options to customize the walk behavior.
 #[derive(Clone)]
 pub struct WalkBuilder {
     /// The root directory of the workspace to be walked.
     workspace_root: PathBuf,
+
     /// The internal `WalkBuilder` used for managing the walk configuration.
     walker_builder: InternalWalkBuilder,
+
     /// The `OverrideBuilder` used for handling custom ignore and include patterns.
     override_builder: OverrideBuilder,
+
     /// The optional maximum capacity of the receiver for walk results.
     max_capacity: Option<usize>,
 
@@ -33,6 +138,7 @@ pub struct WalkBuilder {
 }
 
 impl WalkBuilder {
+    /// Creates a new builder with the workspace root directory.
     pub fn new<P>(workspace_root: P) -> Self
     where
         P: AsRef<Path>,
@@ -50,7 +156,7 @@ impl WalkBuilder {
         }
     }
 
-    /// Builds and returns a `WorkspaceWalk`.
+    /// Builds and returns a Walk instance based on the provided configuration.
     pub fn build(mut self) -> Result<Walk> {
         self.build_overrides()?;
         let walk_parallel = self.walker_builder.build_parallel();
@@ -58,54 +164,35 @@ impl WalkBuilder {
         Ok(walk)
     }
 
-    /// Adds a custom ignore file.
+    /// Adds a custom file containing *.gitignore*-like patterns to ignore during the walk.
     #[inline]
     pub fn add_ignore<P>(&mut self, file_name: P) -> &Self
     where
         P: AsRef<OsStr>,
     {
         let file_path = &self.workspace_root().join(file_name.as_ref());
-        self.inner_mut().add_custom_ignore_filename(file_path);
+        self.walker_builder.add_custom_ignore_filename(file_path);
         self
     }
 
-    /// Sets whether to disable git ignore rules.
-    ///
-    /// This method only effects walk runs without `include` or `exclude` patterns.
-    /// We expose this method because sometimes you might want to explicitly turn off
-    /// gitignore pattern matches.
+    /// Controls whether to use Git ignore rules (default: enabled).
     #[inline]
     pub fn disable_git_ignore(&mut self, yes: bool) -> &Self {
-        self.inner_mut().git_ignore(!yes);
+        self.walker_builder.git_ignore(!yes);
         self
     }
 
-    /// Returns a reference to the root directory of the workspace.
+    /// Returns a reference to the workspace root directory.
     pub fn workspace_root(&self) -> &Path {
         self.workspace_root.as_ref()
     }
 
-    /// Returns a reference to the internal `WalkBuilder` used for configuring the walk.
-    pub fn inner(&self) -> &InternalWalkBuilder {
-        &self.walker_builder
-    }
-
-    /// Returns a mutable reference to the internal `WalkBuilder`.
-    pub fn inner_mut(&mut self) -> &mut InternalWalkBuilder {
-        &mut self.walker_builder
-    }
-
-    /// Returns a reference to the `OverrideBuilder` used for managing custom include/exclude patterns.
-    pub fn override_builder(&self) -> &OverrideBuilder {
-        &self.override_builder
-    }
-
-    /// Returns the optional maximum capacity for the receiver of walk results, if set.
+    /// Sets the optional maximum capacity for the receiver in `run_task`.
     pub fn max_capacity(&self) -> Option<usize> {
         self.max_capacity
     }
 
-    /// Adds a set of glob *exclude* patterns to the overrides.
+    /// Adds glob patterns to exclude files and directories.
     pub fn exclude<T>(&mut self, patterns: Option<Vec<T>>) -> Result<()>
     where
         T: 'static + AsRef<str>,
@@ -122,7 +209,7 @@ impl WalkBuilder {
         Ok(())
     }
 
-    /// Adds a set of glob *include* patterns to the overrides.
+    /// Adds glob patterns to include certain files and directories (overrides excludes).
     pub fn include<T>(&mut self, patterns: Option<Vec<T>>) -> Result<()>
     where
         T: 'static + AsRef<str>,
@@ -149,33 +236,28 @@ impl WalkBuilder {
         for pattern in patterns {
             self.override_builder.add(pattern)?;
         }
-        let overrides = self.override_builder().build()?;
+        let overrides = self.override_builder.build()?;
         self.walker_builder.overrides(overrides);
 
         Ok(())
     }
 }
 
-/// Switch pattern negation.
+/// Helper function to negate glob patterns (add/remove leading `!`).
 ///
-/// Pattern without `!` are prefixed with one. Similarly, pattern starting
-/// with `!` will have that removed.
+/// Patterns without a leading `!` are prefixed with one.
+/// Patterns with a leading `!` will have that prefix stripped.
 ///
-/// Note: This function assumes the pattern is not an empty string,
-/// and/or would not become an empty string after stripping `!`
-/// if it contains one.
+/// Note:
+///
+/// This function assumes the pattern is not an empty string, and/or would not become
+/// an empty string after removing the leading `!`, if it contains one.
 #[inline]
 fn switch_pattern_negation(pattern: &str) -> String {
     pattern
         .strip_prefix('!')
         .map(|p| p.to_string())
         .unwrap_or_else(|| format!("!{pattern}"))
-}
-
-#[derive(Clone, PartialEq)]
-pub enum OverridePatterns {
-    Include(Vec<String>),
-    Exclude(Vec<String>),
 }
 
 #[cfg(test)]
