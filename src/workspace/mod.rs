@@ -38,8 +38,4 @@ pub struct LicensaWorkspace {
     pub license: LicenseId,
     pub exclude: Vec<String>,
     pub year: Option<LicenseYear>,
-    pub email: Option<String>,
-    pub project: Option<String>,
-    #[serde(rename(serialize = "projecturl"))]
-    pub project_url: Option<url::Url>,
 }
