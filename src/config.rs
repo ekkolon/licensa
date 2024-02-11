@@ -54,42 +54,6 @@ pub struct Config {
     #[arg(short, long, value_name = "NAME")]
     pub owner: Option<String>,
 
-    /// The E-Mail of the copyright owner.
-    #[arg(long)]
-    pub email: Option<String>,
-
-    /// The name of the project to be licensed.
-    ///
-    /// Note that most licenses don't require this field, however,
-    /// there are a few that do:
-    ///
-    /// - **BSD-4-Clause**
-    /// - **MulanPSL-2.0**
-    /// - **NCSA**
-    /// - **Vim**
-    ///
-    /// An interpolation error will occur if this field is missing in
-    /// an attempt to apply a copyright notice to a license requiring
-    /// this field.
-    #[arg(long)]
-    pub project: Option<String>,
-
-    /// URL of the project.
-    ///
-    /// Note that most licenses don't require this field, however,
-    /// there are a few that do:
-    ///
-    /// - **BSD-4-Clause**
-    /// - **MulanPSL-2.0**
-    /// - **NCSA**
-    /// - **Vim**
-    ///
-    /// An interpolation error will occur if this field is missing in
-    /// an attempt to apply a copyright notice to a license requiring
-    /// this field.
-    #[arg(long, value_name = "URL")]
-    pub project_url: Option<url::Url>,
-
     /// Represents the copyright year or a range of years.
     ///
     /// The `year` field accepts various formats, allowing flexibility in specifying the copyright period:
@@ -121,20 +85,14 @@ impl Config {
     pub fn from_defaults() -> Self {
         let empty = Config::new();
         Config {
-            email: empty.email().map(|s| s.to_owned()),
-            exclude: Some(empty.exclude().to_vec()),
-            owner: empty.holder().map(|s| s.to_owned()),
             license: empty.license().map(|s| s.into()),
-            project: empty.project().map(|s| s.to_owned()),
-            project_url: empty.project_url().map(|s| s.to_owned()),
+            owner: empty.holder().map(|s| s.to_owned()),
             year: empty.year().map(|s| s.to_owned()),
+            exclude: Some(empty.exclude().to_vec()),
         }
     }
 
     pub fn update(&mut self, source: Config) {
-        if let Some(email) = source.email.as_deref() {
-            self.email = Some(email.to_owned())
-        }
         if let Some(exclude) = source.exclude.as_deref() {
             self.exclude = Some(exclude.to_owned())
         }
@@ -144,19 +102,9 @@ impl Config {
         if let Some(license) = source.license.as_deref() {
             self.license = Some(LicenseId(license.to_string()))
         }
-        if let Some(project) = source.project.as_deref() {
-            self.project = Some(project.to_owned())
-        }
-        if let Some(project_url) = source.project_url.as_ref() {
-            self.project_url = Some(project_url.to_owned())
-        }
         if let Some(year) = source.year.as_ref() {
             self.year = Some(year.to_owned())
         }
-    }
-
-    pub fn email(&self) -> Option<&str> {
-        self.email.as_deref()
     }
 
     pub fn exclude(&self) -> &[String] {
@@ -169,14 +117,6 @@ impl Config {
 
     pub fn license(&self) -> Option<&str> {
         self.license.as_deref()
-    }
-
-    pub fn project(&self) -> Option<&str> {
-        self.project.as_deref()
-    }
-
-    pub fn project_url(&self) -> Option<&url::Url> {
-        self.project_url.as_ref()
     }
 
     pub fn year(&self) -> Option<&LicenseYear> {
