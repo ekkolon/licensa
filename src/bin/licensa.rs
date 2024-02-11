@@ -19,6 +19,10 @@ fn run() -> Result<()> {
             commands::init::run(&args)?;
         }
 
+        Command::Add(args) => {
+            commands::add::run(&args)?;
+        }
+
         Command::Apply(args) => {
             commands::apply::run(&args)?;
         }

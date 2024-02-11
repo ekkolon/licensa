@@ -1,6 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use crate::commands::add::AddArgs;
 use crate::commands::apply::ApplyArgs;
 use crate::commands::init::InitArgs;
 use crate::commands::verify::VerifyArgs;
@@ -81,4 +82,7 @@ pub enum Command {
     /// - Insufficient read/write permissions for source files
     #[command(name = "apply")]
     Apply(ApplyArgs),
+
+    #[command(name = "add")]
+    Add(AddArgs),
 }
