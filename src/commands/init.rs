@@ -47,9 +47,7 @@ pub fn run(args: &InitArgs) -> Result<()> {
         let _ = config.owner.insert(owner);
     }
 
-    let workspace_config = serde_json::to_value(config)?;
-    let workspace_config: Config = serde_json::from_value(workspace_config)?;
-    save_workspace_config(&workspace_root, workspace_config)?;
+    save_workspace_config(&workspace_root, config)?;
     save_workspace_ignore(workspace_root)?;
 
     println!("Successfully initialized Licensa workspace");
