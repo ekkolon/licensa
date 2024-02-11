@@ -1,19 +1,23 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::config::Config;
-use crate::error::exit_io_error;
-use crate::ops::workspace::{
-    save_workspace_config, save_workspace_ignore, throw_workspace_config_exists,
+use crate::config::{
+    Config, {LICENSA_CONFIG_FILENAME, LICENSA_IGNORE_FILENAME},
 };
 use crate::schema::LicenseId;
+use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
 
 use anyhow::Result;
 use clap::Args;
 use inquire::{Select, Text};
+use lazy_static::lazy_static;
 
 use std::env::current_dir;
 use std::str::FromStr;
+
+lazy_static! {
+    static ref LICENSA_IGNORE: &'static str = std::include_str!("../../.licensaignore");
+}
 
 #[derive(Args, Debug, Clone)]
 pub struct InitArgs {
@@ -25,33 +29,32 @@ impl InitArgs {
     pub fn into_config(&self) -> Result<Config> {
         let mut config = Config::default();
         config.update(self.config.clone());
+
+        if config.license.is_none() {
+            let license_id = prompt_license_selection()?;
+            let _ = config.license.insert(license_id);
+        }
+        if config.owner.is_none() {
+            let owner = prompt_copyright_owner()?;
+            let _ = config.owner.insert(owner);
+        }
+
         Ok(config)
     }
 }
 
 pub fn run(args: &InitArgs) -> Result<()> {
-    let workspace_root = current_dir()?;
-
-    if let Err(err) = throw_workspace_config_exists(&workspace_root) {
-        exit_io_error(err);
-    }
-
-    let mut config = args.into_config()?;
-
-    if config.license.is_none() {
-        let license_id = prompt_license_selection()?;
-        let _ = config.license.insert(license_id);
-    }
-    if config.owner.is_none() {
-        let owner = prompt_copyright_owner()?;
-        let _ = config.owner.insert(owner);
-    }
-
-    save_workspace_config(&workspace_root, config)?;
-    save_workspace_ignore(workspace_root)?;
+    let workspace_root = current_dir()?.join("tmp");
+    ensure_config_missing(&workspace_root, LICENSA_CONFIG_FILENAME)?;
+    let config = args.into_config()?;
+    save_config(&workspace_root, LICENSA_CONFIG_FILENAME, config)?;
+    save_ignore_file(
+        workspace_root,
+        LICENSA_IGNORE_FILENAME,
+        LICENSA_IGNORE.as_bytes(),
+    )?;
 
     println!("Successfully initialized Licensa workspace");
-
     Ok(())
 }
 
