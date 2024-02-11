@@ -9,6 +9,15 @@ use clap::Args;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+/// The filename used for Licensa's ignore file, which contains patterns
+/// for files or directories to be excluded from license scanning or other
+/// workspace operations.
+pub const LICENSA_IGNORE_FILENAME: &str = ".licensaignore";
+
+/// The filename used for Licensa's configuration file, which stores
+/// workspace-specific settings and preferences.F
+pub const LICENSA_CONFIG_FILENAME: &str = ".licensarc";
+
 /// Represents the container for a Licensa config file that may be
 /// included in root directory of a software project.
 ///
