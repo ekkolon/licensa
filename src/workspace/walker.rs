@@ -78,7 +78,7 @@ impl Walk {
     /// Sets a condition (closure) for deciding when to send directory entries
     /// to the receiver during the walk.
     #[inline]
-    pub fn send_while<T>(&mut self, when: T) -> &Self
+    pub fn send_while<T>(&mut self, when: T) -> &mut Self
     where
         T: Fn(WalkResult) -> bool + Sync + Send + 'static,
     {
@@ -88,7 +88,7 @@ impl Walk {
 
     /// Sets a condition (closure) for stopping the walk early.
     #[inline]
-    pub fn quit_while<T>(&mut self, when: T) -> &Self
+    pub fn quit_while<T>(&mut self, when: T) -> &mut Self
     where
         T: Fn(WalkResult) -> bool + Sync + Send + 'static,
     {
@@ -98,7 +98,7 @@ impl Walk {
 
     /// Sets the optional maximum capacity for the receiver in when using `run_task`.
     #[inline]
-    pub fn max_capacity(&mut self, limit: Option<usize>) -> &Self {
+    pub fn max_capacity(&mut self, limit: Option<usize>) -> &mut Self {
         if limit.is_none() && self.max_capacity.is_none() {
             return self;
         }
