@@ -44,7 +44,7 @@ impl InitArgs {
 }
 
 pub fn run(args: &InitArgs) -> Result<()> {
-    let workspace_root = current_dir()?.join("tmp");
+    let workspace_root = current_dir()?;
     ensure_config_missing(&workspace_root, LICENSA_CONFIG_FILENAME)?;
     let config = args.into_config()?;
     save_config(&workspace_root, LICENSA_CONFIG_FILENAME, config)?;
