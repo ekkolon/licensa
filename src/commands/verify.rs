@@ -34,7 +34,7 @@ pub fn run(args: &mut VerifyArgs) -> anyhow::Result<()> {
     // ========================================================
 
     let mut walk_builder = WalkBuilder::new(&workspace_root);
-    walk_builder.exclude(config.exclude.clone())?;
+    walk_builder.exclude(Some(config.exclude.clone()))?;
 
     let mut walker = walk_builder.build()?;
     walker
