@@ -94,7 +94,9 @@ pub struct Config {
     #[cfg(not(doctest))]
     #[arg(long, verbatim_doc_comment)]
     #[arg(value_name = "GLOB[,...]", value_delimiter = ' ', num_args = 1..)]
-    pub exclude: Option<Vec<String>>,
+    #[arg(default_values_t = Vec::<String>::new())]
+    #[serde(default = "Vec::new")]
+    pub exclude: Vec<String>,
 }
 
 impl Config {
@@ -108,13 +110,14 @@ impl Config {
             license: empty.license().map(|s| s.into()),
             owner: empty.holder().map(|s| s.to_owned()),
             year: empty.year().map(|s| s.to_owned()),
-            exclude: Some(empty.exclude().to_vec()),
+            exclude: empty.exclude().to_vec(),
         }
     }
 
     pub fn update(&mut self, source: Config) {
-        if let Some(exclude) = source.exclude.as_deref() {
-            self.exclude = Some(exclude.to_owned())
+        if !source.exclude.is_empty() {
+            let mut patterns = source.exclude;
+            self.exclude.append(&mut patterns);
         }
         if let Some(holder) = source.owner.as_deref() {
             self.owner = Some(holder.to_owned())
@@ -128,7 +131,7 @@ impl Config {
     }
 
     pub fn exclude(&self) -> &[String] {
-        self.exclude.as_ref().map(|v| v.as_ref()).unwrap_or(&[])
+        self.exclude.as_ref()
     }
 
     pub fn holder(&self) -> Option<&str> {
