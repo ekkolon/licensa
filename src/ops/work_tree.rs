@@ -154,7 +154,6 @@ where
 
         let result = (*self.function)(&mut self.context, response);
         let completed = self.results.send(result).is_err();
-
         self.completed = completed;
     }
 }
@@ -294,26 +293,21 @@ mod tests {
             content: "example test content".into(),
             path: PathBuf::new(),
         };
+
         // Process file contents with the cloned processor
         cloned_processor.execute(response);
         assert!(!cloned_processor.completed);
-
-        // Check if the sender sends a result
         assert_eq!(receiver.try_recv(), Ok(42));
     }
 
     #[test]
     fn test_work_tree_processor() {
         let mut work_tree_processor = WorkTree { tasks: vec![] };
-
         let receiver = work_tree_processor.add_task(MockContext, mock_function);
-
         let (tmp_dir, tmp_file) = create_temp_file("work_tree_processor.txt");
 
         // Run with an empty work tree path vector
         work_tree_processor.run(vec![tmp_file]);
-
-        // Check if the receiver receives the result
         assert_eq!(
             receiver.try_recv(),
             Ok(42),

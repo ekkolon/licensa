@@ -147,6 +147,7 @@ where
             "Licensa is already initialized in the current directory",
         ));
     }
+
     Ok(())
 }
 pub fn throw_no_workspace_config_exists<P>(workspace_root: P) -> Result<()>
@@ -266,29 +267,19 @@ mod tests {
 
     #[test]
     fn test_write_config_file_successful() {
-        // Create a temporary directory for testing
         let temp_dir = tempdir().expect("Failed to create temporary directory");
-
-        // Define the target directory
         let target_dir = temp_dir.path();
-
-        // Define the output file path
         let config_file_path = target_dir.join(DEFAULT_CONFIG_FILENAME);
 
-        // Create a sample configuration
         let sample_config = ExampleWorkspace {
             prop1: "hello world".to_string(),
             prop2: 1234,
         };
 
-        // Test writing the config file
         let write_result = save_workspace_config(target_dir, &sample_config);
         assert!(write_result.is_ok());
-
-        // Verify that the config file exists
         assert!(config_file_path.exists());
 
-        // Verify the content of the config file
         let mut file = File::open(&config_file_path).expect("Failed to open config file");
         let mut file_content = String::new();
         file.read_to_string(&mut file_content)
@@ -304,18 +295,12 @@ mod tests {
 
     #[test]
     fn test_write_config_file_existing_file() {
-        // Create a temporary directory for testing
         let temp_dir = tempdir().expect("Failed to create temporary directory");
-
-        // Define the target directory
         let target_dir = temp_dir.path();
-
-        // Create an existing config file in the temporary directory
         let existing_config_filename = POSSIBLE_CONFIG_FILENAMES[0];
         let existing_config_path = target_dir.join(existing_config_filename);
         File::create(&existing_config_path).expect("Failed to create existing config file");
 
-        // Create a sample configuration
         let sample_config = ExampleWorkspace {
             prop1: "hello world".to_string(),
             prop2: 1234,
@@ -332,18 +317,12 @@ mod tests {
 
     #[test]
     fn test_find_config_file_single_file_exists() {
-        // Create a temporary directory for testing
         let temp_dir = tempdir().expect("Failed to create temporary directory");
-
-        // Define the target directory
         let target_dir = temp_dir.path();
-
-        // Create a sample config file in the temporary directory
         let sample_config_filename = POSSIBLE_CONFIG_FILENAMES[0];
         let sample_config_path = target_dir.join(sample_config_filename);
         File::create(&sample_config_path).expect("Failed to create sample config file");
 
-        // Test finding the config file
         let result: Result<Value> = resolve_workspace_config(target_dir);
         assert!(result.is_err());
 
@@ -358,13 +337,9 @@ mod tests {
 
     #[test]
     fn test_find_config_file_multiple_files_exist() {
-        // Create a temporary directory for testing
         let temp_dir = tempdir().expect("Failed to create temporary directory");
-
-        // Define the target directory
         let target_dir = temp_dir.path();
 
-        // Create sample config files in the temporary directory
         for &filename in POSSIBLE_CONFIG_FILENAMES {
             let config_path = target_dir.join(filename);
             File::create(&config_path).expect("Failed to create sample config file");
@@ -373,13 +348,10 @@ mod tests {
             drop(config_path);
         }
 
-        // Test finding the config file (use the first one in the list)
         let result: Result<Value> = resolve_workspace_config(target_dir);
         assert!(result.is_err());
 
-        // Verify the content of the config file
-        // let expected_content = String::new(); // Adjust with actual content
-        // assert_eq!(result.unwrap(), expected_content);
+        // TODO:  Verify the content of the config file
 
         // Cleanup
         temp_dir.close().expect("Failed to close temp directory");
@@ -387,13 +359,8 @@ mod tests {
 
     #[test]
     fn test_find_config_file_no_file_exists() {
-        // Create a temporary directory for testing
         let temp_dir = tempdir().expect("Failed to create temporary directory");
-
-        // Define the target directory
         let target_dir = temp_dir.path();
-
-        // Test finding the config file when none exist
         let result: Result<Value> = resolve_workspace_config(target_dir);
         // assert!(result.is_err());
     }

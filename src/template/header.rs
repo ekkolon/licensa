@@ -239,7 +239,7 @@ mod tests {
 "#;
         assert_eq!(&result, expected);
 
-        // Test case 2: Empty template and prefix
+        // Empty template and prefix
         let empty_template = "";
         let result = rs_header_prefix.apply(empty_template).unwrap();
         let expected = "\n";

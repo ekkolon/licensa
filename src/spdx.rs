@@ -63,7 +63,6 @@ fn is_single_expr(expr: &str) -> bool {
     expr.split(' ').collect::<Vec<&str>>().len() == 1
 }
 
-/// NOTE:
 pub fn list_spdx_license_names() -> Vec<String> {
     LICENSES
         .iter()
