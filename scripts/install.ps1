@@ -1,5 +1,5 @@
 # GitHub repository details
-$version = "0.1.6"
+$version = "0.1.7"
 $binName = "licensa"
 $programName = "Licensa"
 $architecture = "x86_64-windows"
