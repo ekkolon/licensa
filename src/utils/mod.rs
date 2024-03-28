@@ -85,18 +85,10 @@ where
 ///
 /// Returns an error if there are issues creating or writing to the file.
 pub fn write_json<P: AsRef<Path>>(file_path: P, json_data: &serde_json::Value) -> Result<()> {
-    // Create or open the file for writing
     let mut file = File::create(&file_path)?;
-
-    // Serialize the JSON data to a pretty-printed string
     let json_string = serde_json::to_string_pretty(json_data)?;
-
-    // Write the pretty-printed JSON string to the file
     file.write_all(json_string.as_bytes())?;
-
-    // Flush the buffer to ensure the data is written to the file
     file.flush()?;
-
     Ok(())
 }
 

@@ -400,6 +400,7 @@ mod tests {
         // Act
         let rx = walker.run_task();
 
+        // Ensure config is an object
         // Assert
         // Add assertions for receiving results from the workspace walk
     }

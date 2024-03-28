@@ -37,9 +37,7 @@ where
     /// * `item` - An item implementing the `Cachable` trait.  
     pub fn set(&mut self, item: T) {
         let mut cache = self.inner.lock().unwrap();
-
         let cache_id = item.cache_id();
-
         cache.entry(cache_id).or_insert_with(|| Arc::new(item));
     }
 
@@ -50,9 +48,7 @@ where
     /// * `item` - An item implementing the `Cachable` trait.  
     pub fn add(&self, item: T) {
         let mut cache = self.inner.lock().unwrap();
-
         let cache_id = item.cache_id();
-
         cache.entry(cache_id).or_insert_with(|| Arc::new(item));
     }
 
@@ -158,6 +154,7 @@ mod tests {
         pub template: String,
         pub extension: String,
     }
+
     impl Cachable for TemplateItem {
         fn cache_id(&self) -> String {
             self.extension.clone()

@@ -154,7 +154,6 @@ where
 
         let result = (*self.function)(&mut self.context, response);
         let completed = self.results.send(result).is_err();
-
         self.completed = completed;
     }
 }

@@ -124,6 +124,7 @@ where
 {
     let workspace_root = workspace_root.as_ref();
     ensure_dir(workspace_root)?;
+
     if let Some(path) = resolve_config_path(workspace_root, file_name) {
         let content =
             fs::read_to_string(path).with_context(|| "failed to read .licensarc config file")?;
@@ -193,18 +194,20 @@ where
 {
     let workspace_root = workspace_root.as_ref();
     ensure_dir(workspace_root)?;
+
     let config = serde_json::to_value(config.borrow())?;
-    // Ensure config is an object
     if !config.is_object() {
         let err = anyhow!(WorkspaceError::InvalidConfigDataType)
             .context("failed to save workspace config file");
         return Err(err.into());
     }
+
     let config = remove_null_fields(config);
     let config = serde_json::to_string_pretty(&config)
         .with_context(|| "failed to serialize .licensarc config file")?;
     let out_path = workspace_root.join(file_name.as_ref());
     fs::write(out_path, config).with_context(|| "failed to save .licensarc config file")?;
+
     Ok(())
 }
 
