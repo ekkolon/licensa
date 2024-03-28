@@ -130,15 +130,6 @@ where
         cache.len()
     }
 
-    // /// Provides an iterator over the items in the cache.
-    // ///
-    // /// # Returns
-    // ///
-    // /// An iterator over cloned `Arc<T>` items in the cache.
-    // pub fn iter(&self) -> CacheIter<T> {
-    //   CacheIter { cache: &self.inner }
-    // }
-
     /// Checks if a specific item exists in the cache.
     ///
     /// # Arguments
@@ -157,26 +148,6 @@ where
         cache.contains_key(id)
     }
 }
-
-// /// Iterator over items in the cache.
-// pub struct CacheIter<'a, T>
-// where
-//   T: 'a,
-// {
-//   cache: &'a Mutex<HashMap<String, Arc<T>>>,
-// }
-
-// impl<'a, T> Iterator for CacheIter<'a, T>
-// where
-//   T: 'a,
-// {
-//   type Item = &'a Arc<T>;
-
-//   fn next(&mut self) -> Option<Self::Item> {
-//     let cache = self.cache.lock().unwrap();
-//     cache.values().next()
-//   }
-// }
 
 #[cfg(test)]
 mod tests {
@@ -292,30 +263,6 @@ mod tests {
         let size = cache.size();
         assert_eq!(size, 2);
     }
-
-    // #[test]
-    // fn test_cache_iter() {
-    //   let cache = Cache::<TemplateItem>::new();
-    //   let ext1 = ".rs";
-    //   let ext2 = ".toml";
-    //   let template1 = "Your license template for Rust";
-    //   let template2 = "Your license template for TOML";
-
-    //   cache.add(TemplateItem {
-    //     extension: ext1.into(),
-    //     template: template1.into(),
-    //   });
-
-    //   cache.add(TemplateItem {
-    //     extension: ext2.into(),
-    //     template: template2.into(),
-    //   });
-
-    //   let mut iter = cache.iter();
-    //   assert_eq!(iter.next().unwrap().template, template1);
-    //   assert_eq!(iter.next().unwrap().template, template2);
-    //   assert!(iter.next().is_none());
-    // }
 
     #[test]
     fn test_cache_contains() {

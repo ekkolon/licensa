@@ -406,7 +406,6 @@ mod tests {
 
     #[test]
     fn test_workspace_walk_send_while() {
-        // Arrange
         let (tmp_dir, file_path) = create_temp_file("somefile.rs");
         let builder = WalkBuilder::new(&tmp_dir);
 
@@ -418,10 +417,10 @@ mod tests {
         let filter_file = |res: Result<DirEntry, ignore::Error>| {
             res.is_ok() && res.unwrap().file_type().unwrap().is_file()
         };
+
         // Only include files
         walker.send_while(filter_file);
 
-        // Act
         let entries: Vec<DirEntry> = walker
             .run_task()
             .into_iter()
@@ -429,6 +428,7 @@ mod tests {
             .into_par_iter()
             .filter_map(Result::ok)
             .collect();
+
         assert!(entries.len() == 1);
 
         drop(file_path);
@@ -453,18 +453,14 @@ mod tests {
             .collect();
 
         assert!(entries.len() == 2);
-        // Assert
-        // Add assertions to verify that the send_while condition is applied
     }
 
     #[test]
     fn test_workspace_walk_quit_while() {
-        // Arrange
         let (tmp_dir, builder) = create_test_builder();
         let mut walker = builder.build().expect("Failed to build workspace walk");
         walker.quit_while(|_result| true);
 
-        // Act
         let rx = walker.run_task();
 
         // Assert
@@ -473,31 +469,22 @@ mod tests {
 
     #[test]
     fn test_workspace_walk_with_invalid_ignore() {
-        // Arrange
         let (tmp_dir, mut builder) = create_test_builder();
         builder.add_ignore("nonexistent_ignore_file");
 
-        // Act
         let result = builder.build();
         assert!(result.is_ok());
-
-        // Assert
-        // Add more assertions as needed
     }
 
     #[test]
     fn test_workspace_walk_with_disable_git_ignore() {
-        // Arrange
         let (tmp_dir, mut builder) = create_test_builder();
         builder.disable_git_ignore(true);
         let walker = builder.build().expect("Failed to build workspace walk");
 
-        // Act
         let rx = walker.run_task();
 
         // Assert
         // Add assertions for receiving results from the workspace walk with git ignore disabled
     }
-
-    // Add more tests for other methods and scenarios as needed
 }

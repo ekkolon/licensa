@@ -545,7 +545,6 @@ mod tests {
         let root_path = root_dir.as_ref();
         let file_name = "test_file.txt";
 
-        // Create a temporary file in a parent directory
         let mut parent_dir = root_path.to_path_buf();
         parent_dir.push("sub1");
         let sub1_dir = &parent_dir.clone();

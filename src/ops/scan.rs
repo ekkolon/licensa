@@ -221,7 +221,6 @@ mod tests {
 
     #[test]
     fn test_scan_with_license_candidates() {
-        // Create a temporary directory and files
         let temp_dir = create_temp_dir();
         let root_path = temp_dir.path();
 
@@ -239,7 +238,6 @@ mod tests {
             .write_all(b"ignored.txt")
             .expect("Failed to write to .licensaignore file");
 
-        // Run the scan function
         let scan_config = ScanConfig {
             limit: 100,
             exclude: None,
@@ -257,11 +255,8 @@ mod tests {
 
     #[test]
     fn test_scan_without_license_candidates() {
-        // Create a temporary directory without license candidates
         let temp_dir = create_temp_dir();
         let root_path = temp_dir.path();
-
-        // Run the scan function
         let scan_config = ScanConfig {
             limit: 100,
             exclude: None,
@@ -270,8 +265,7 @@ mod tests {
         let scan = Scan::new(scan_config);
         let result = scan.run();
 
-        // Assert that the result is Ok and the candidates list is empty
-        // TODO implement
+        // TODO: Assert that the result is Ok and the candidates list is empty
     }
 
     #[test]
