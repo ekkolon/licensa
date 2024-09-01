@@ -1,0 +1,6 @@
+allow-branch = ["main"]
+publish = false
+sign-tag = true
+sign-commit = true
+tag = true
+tag-message = "chore: release {{crate_name}} version {{version}}"
