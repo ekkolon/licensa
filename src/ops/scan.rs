@@ -136,7 +136,7 @@ pub fn is_candidate<E>(entry: E) -> bool
 where
     E: Borrow<DirEntry>,
 {
-    let entry = &entry.borrow() as &DirEntry;
+    let entry = entry.borrow();
 
     // Only consider entry if it is a regular file
     if !entry.file_type().map_or(false, |ftype| ftype.is_file()) {
