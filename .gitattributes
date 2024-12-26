@@ -1,3 +1,4 @@
 licenses/templates/* linguist-vendored
 licenses/headers/* linguist-vendored
 tools/extractor/** linguist-vendored
+scripts/* linguist-vendored
