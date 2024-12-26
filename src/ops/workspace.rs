@@ -62,7 +62,6 @@ where
 /// the provided directory path or if there's an issue reading the file content.
 pub fn resolve_workspace_config<T>(workspace_root: impl AsRef<Path>) -> Result<T>
 where
-    T: ?Sized,
     for<'de> T: Deserialize<'de>,
 {
     let workspace_root = workspace_root.as_ref();
