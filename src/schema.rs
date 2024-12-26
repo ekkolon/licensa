@@ -246,7 +246,7 @@ impl<'de> Deserialize<'de> for LicenseYear {
     {
         struct LicenseYearVisitor;
 
-        impl<'de> de::Visitor<'de> for LicenseYearVisitor {
+        impl de::Visitor<'_> for LicenseYearVisitor {
             type Value = LicenseYear;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

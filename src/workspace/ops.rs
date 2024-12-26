@@ -46,7 +46,6 @@ use std::path::{Path, PathBuf};
 /// the provided directory path or if there's an issue reading the file content.
 pub fn read_config_into<T, P, F>(workspace_root: P, file_name: F) -> WorkspaceResult<T>
 where
-    T: ?Sized,
     for<'de> T: Deserialize<'de>,
     P: AsRef<Path>,
     F: AsRef<str>,
@@ -117,7 +116,6 @@ where
 /// * `Err(WorkspaceError)` if there's an error reading or parsing the file content.
 pub fn resolve_config_into<T, P, F>(workspace_root: P, file_name: F) -> WorkspaceResult<Option<T>>
 where
-    T: ?Sized,
     for<'de> T: Deserialize<'de>,
     P: AsRef<Path>,
     F: AsRef<str>,
