@@ -1,6 +1,6 @@
 [package]
 name = "licensa"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 description = "CLI tool for seamless source code license management, supporting 65+ file types"
 authors = ["Nelson Dominguez <ekkolon@proton.me>"]
