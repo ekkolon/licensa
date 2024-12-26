@@ -126,7 +126,7 @@ pub struct HeaderDefinition<'a> {
     pub header_prefix: HeaderPrefix<'a>,
 }
 
-impl<'a> HeaderDefinition<'a> {
+impl HeaderDefinition<'_> {
     /// Checks if the given extension is contained in the list of file extensions.
     pub fn contains_extension<E: AsRef<str>>(&self, extension: Option<E>) -> bool {
         extension
