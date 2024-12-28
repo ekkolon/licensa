@@ -2,5 +2,7 @@
   "license": "Apache-2.0",
   "owner": "Nelson Dominguez",
   "year": 2024,
-  "exclude": []
+  "exclude": [
+    "!src/**"
+  ]
 }

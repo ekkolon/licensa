@@ -54,10 +54,10 @@ impl WorkTreeRunnerStatistics {
         self
     }
 
-    pub fn count_ignored(self) -> usize {
+    pub fn count_ignored(&self) -> usize {
         self.ignored
     }
-    pub fn count_passed(self) -> usize {
+    pub fn count_passed(&self) -> usize {
         self.action_count
     }
     pub fn count_failed(&mut self) -> usize {

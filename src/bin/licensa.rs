@@ -19,7 +19,7 @@ fn run() -> Result<()> {
             commands::init::run(&args)?;
         }
 
-        Command::Apply(args) => {
+        Command::Add(args) => {
             commands::apply::run(&args)?;
         }
 

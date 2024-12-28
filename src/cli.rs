@@ -14,7 +14,13 @@ use clap::{Parser, Subcommand};
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
-#[command(next_line_help = true)]
+#[command(
+    next_line_help = true,
+    //flatten_help = true,
+    //override_usage = "licensa add -X [-a] [-b] <file>\n       \
+    //     myapp -Y [-c] <file1> <file2>\n       \
+    //     myapp -Z [-d|-e]"
+)]
 pub struct Cli {
     #[arg(short, long, default_value_t = false)]
     pub verbose: bool,
@@ -79,6 +85,6 @@ pub enum Command {
     /// - Missing required argument
     ///
     /// - Insufficient read/write permissions for source files
-    #[command(name = "apply")]
-    Apply(ApplyArgs),
+    #[command(name = "add", visible_alias = "apply", verbatim_doc_comment)]
+    Add(ApplyArgs),
 }
