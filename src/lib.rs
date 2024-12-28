@@ -8,6 +8,7 @@ pub mod commands;
 pub mod config;
 pub mod template;
 pub mod workspace;
+pub mod terminal;
 
 mod error;
 mod ops;

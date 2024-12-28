@@ -5,6 +5,7 @@
 pub mod testing;
 
 pub mod validate;
+pub mod format;
 
 use validate::is_valid_year;
 
