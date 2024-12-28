@@ -8,10 +8,6 @@ use anyhow::Result;
 use clap::Parser;
 
 fn main() -> Result<()> {
-    run()
-}
-
-fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
