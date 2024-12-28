@@ -23,8 +23,8 @@ fn run() -> Result<()> {
             commands::apply::run(&args)?;
         }
 
-        Command::Verify(mut args) => {
-            commands::verify::run(&mut args)?;
+        Command::Check(mut args) => {
+            commands::check::run(&mut args)?;
         }
     };
 

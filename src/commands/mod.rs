@@ -3,4 +3,4 @@
 
 pub mod apply;
 pub mod init;
-pub mod verify;
+pub mod check;

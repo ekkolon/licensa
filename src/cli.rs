@@ -3,7 +3,7 @@
 
 use crate::commands::apply::ApplyArgs;
 use crate::commands::init::InitArgs;
-use crate::commands::verify::VerifyArgs;
+use crate::commands::check::CheckArgs;
 
 use clap::{Parser, Subcommand};
 
@@ -56,8 +56,8 @@ pub enum Command {
     /// Verify presence of license headers in one or more files.
     ///
     /// A glob pattern may be used to verify multiple files that recursively.
-    #[command(name = "verify")]
-    Verify(VerifyArgs),
+    #[command(name = "check", visible_alias = "verify", verbatim_doc_comment)]
+    Check(CheckArgs),
 
     /// Apply copyright license headers to source code files.
     ///

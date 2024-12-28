@@ -19,12 +19,12 @@ use std::time::Duration;
 use std::{fs, thread}; // Add colored crate for color output
 
 #[derive(Args, Debug)]
-pub struct VerifyArgs {
+pub struct CheckArgs {
     #[command(flatten)]
     config: Config,
 }
 
-pub fn run(args: &mut VerifyArgs) -> anyhow::Result<()> {
+pub fn run(args: &mut CheckArgs) -> anyhow::Result<()> {
     let mut runner_stats = WorkTreeRunnerStatistics::new("verify", "found");
 
     let workspace_root = current_dir()?;
