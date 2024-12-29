@@ -1,19 +1,21 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::config::{
-    Config, {LICENSA_CONFIG_FILENAME, LICENSA_IGNORE_FILENAME},
-};
-use crate::schema::LicenseId;
+use crate::cli::Cli;
+use crate::terminal::{self, LazyStep};
 use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
+use crate::{
+    config::{Config, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE_FILENAME},
+    licensing::LicenseId,
+};
 
 use anyhow::Result;
-use clap::Args;
+use clap::error::ErrorKind;
+use clap::{Args, CommandFactory};
 use inquire::{Select, Text};
 use lazy_static::lazy_static;
-
-use std::env::current_dir;
-use std::str::FromStr;
+use std::fmt::Debug;
+use std::{env::current_dir, str::FromStr};
 
 lazy_static! {
     static ref LICENSA_IGNORE: &'static str = std::include_str!("../../.licensaignore");
@@ -44,24 +46,43 @@ impl InitArgs {
 }
 
 pub fn run(args: &InitArgs) -> Result<()> {
+    let mut task = terminal::Task::lazy("Initialize Licensa workspace");
+    task.start()?;
+
     let workspace_root = current_dir()?;
-    ensure_config_missing(&workspace_root, LICENSA_CONFIG_FILENAME)?;
+    if let Err(err) = ensure_config_missing(&workspace_root, LICENSA_CONFIG_FILENAME) {
+        task.finish_err()?;
+        Cli::command().error(ErrorKind::Io, err).exit();
+    }
+
     let config = args.into_config()?;
-    save_config(&workspace_root, LICENSA_CONFIG_FILENAME, config)?;
-    save_ignore_file(
+    if let Err(err) = save_config(&workspace_root, LICENSA_CONFIG_FILENAME, config) {
+        task.finish_err()?;
+        Cli::command().error(ErrorKind::Io, err).exit();
+    };
+
+    if let Err(err) = save_ignore_file(
         workspace_root,
         LICENSA_IGNORE_FILENAME,
         LICENSA_IGNORE.as_bytes(),
-    )?;
+    ) {
+        task.finish_err()?;
+        Cli::command().error(ErrorKind::Io, err).exit();
+    };
 
-    println!("Successfully initialized Licensa workspace");
+    task.finish_ok()?;
+    task.logln("Successfully initialized Licensa workspace");
+
+    task.line_break();
+    task.logln("Use `licensa add` to apply license headers to files.");
+
     Ok(())
 }
 
 fn prompt_license_selection() -> Result<LicenseId> {
-    let license_ids = crate::spdx::list_spdx_license_names();
+    let license_ids = crate::licensing::list_spdx_license_names();
     let license_id: String = Select::new("Choose a License", license_ids).prompt()?;
-    let license_id = crate::spdx::id_from_license_fullname(&license_id)?;
+    let license_id = crate::licensing::id_from_license_fullname(&license_id)?;
     let license_id = LicenseId::from_str(&license_id)?;
     Ok(license_id)
 }

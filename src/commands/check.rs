@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::ops::scan::is_candidate;
 use crate::template::has_copyright_notice;
-use crate::utils::format::elapsed_time_in_secs;
+use crate::terminal::{self, LazyStep};
 use crate::workspace::walker::WalkBuilder;
 
 use anyhow::Result;
@@ -10,10 +10,9 @@ use ignore::DirEntry;
 use rayon::prelude::*;
 
 use colored::*;
-use indicatif::{ProgressBar, ProgressStyle};
 use std::env::current_dir;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use std::{fs, thread}; // Add colored crate for color output
 
 #[derive(Args, Debug)]
@@ -23,23 +22,11 @@ pub struct CheckArgs {
 }
 
 pub fn run(args: &mut CheckArgs) -> anyhow::Result<()> {
-    let start_time = Instant::now();
-
-    let pb = ProgressBar::new(0);
-    pb.enable_steady_tick(Duration::from_millis(100));
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{msg} {spinner}")
-            .unwrap(),
-    );
-    pb.set_message("Verifying license headers...");
+    let mut task = terminal::Task::lazy("Verify SPDX License headers");
+    task.start()?;
 
     let workspace_root = current_dir()?;
     let config = &args.config.with_workspace_config(&workspace_root)?;
-
-    // ========================================================
-    // Scanning process
-    // ========================================================
 
     let mut walk_builder = WalkBuilder::new(&workspace_root);
     walk_builder.exclude(Some(config.exclude.clone()))?;
@@ -58,36 +45,25 @@ pub fn run(args: &mut CheckArgs) -> anyhow::Result<()> {
         .filter_map(Result::ok)
         .collect();
 
-    let num_candidates = candidates.len();
-
-    // ========================================================
-    // File processing
-    // ========================================================
     let stats = check_license_headers(&candidates);
 
-    // ========================================================
-    // Print output statistics
-    // ========================================================
-    // Finish spinner once processing is complete
-    pb.set_style(ProgressStyle::default_spinner().template("{msg}").unwrap());
-    pb.abandon_with_message(format!(
-        "Verifying license headers... {} Done.",
-        "✔".green()
+    thread::sleep(Duration::from_secs(5));
+    task.finish_ok()?;
+
+    task.logln(format!(
+        "Checked {} files in {}",
+        candidates.len().to_string().bold(),
+        task.duration_in_secs()?.bold()
     ));
 
-    let end_time = elapsed_time_in_secs(start_time);
+    task.line_break();
 
-    println!(
-        "Processed {} files in {}.\n",
-        num_candidates.to_string().bold(),
-        end_time.to_string().bold()
-    );
+    let outstats = stats.to_single_line(None);
+    task.logln(outstats);
+    task.line_break();
 
-    stats.print_multi_line();
-
-    let num_ignored_formatted = stats.untracked.to_string().bold().yellow();
     if stats.untracked > 0 {
-        println!("\nYou have untracked files. Run `licensa add` to add license headers to them.");
+        task.logln("You have untracked files. Run `licensa add` to add license headers to them.");
     }
 
     Ok(())
@@ -101,21 +77,21 @@ fn check_license_headers(candidates: &Vec<DirEntry>) -> CommandStats {
     candidates
         .par_iter()
         .for_each(|entry: &DirEntry| match fs::read(entry.path()) {
-            Ok(contnet) => {
-                if has_copyright_notice(&contnet) {
+            Ok(content) => {
+                if has_copyright_notice(&content) {
                     num_verfied.fetch_add(1, Ordering::Relaxed);
                 } else {
                     num_untracked.fetch_add(1, Ordering::Relaxed);
                 }
             }
-            Err(err) => {
+            Err(_) => {
                 num_failed.fetch_add(1, Ordering::Relaxed);
             }
         });
 
     CommandStats {
         failed: num_failed.load(Ordering::Relaxed),
-        verified: num_verfied.load(Ordering::Relaxed),
+        passed: num_verfied.load(Ordering::Relaxed),
         untracked: num_untracked.load(Ordering::Relaxed),
     }
 }
@@ -123,51 +99,31 @@ fn check_license_headers(candidates: &Vec<DirEntry>) -> CommandStats {
 struct CommandStats {
     failed: usize,
     untracked: usize,
-    verified: usize,
+    passed: usize,
 }
 
+const DEFAULT_STAT_FRAGMENT_SEP: &str = "; ";
+
 impl CommandStats {
-    fn print_single_line(&self) {
-        let (num_failed, failed_suffix) = match self.failed > 0 {
-            true => (&self.failed.to_string().red().bold(), "failed".red()),
-            false => (&self.failed.to_string().dimmed().bold(), "failed".dimmed()),
+    fn to_single_line(&self, sep: Option<String>) -> String {
+        let (passed_count, passed_suffix) = (&self.passed.to_string().green().bold(), "passed");
+
+        let (untracked_count, untracked_suffix) =
+            (&self.untracked.to_string().yellow().bold(), "untracked");
+
+        // Highlight failed fragments if there is at least 1 failed task.
+        let (failed_count, failed_suffix) = match self.failed > 0 {
+            true => (&self.failed.to_string().red().bold(), "failed"),
+            false => (&self.failed.to_string().dimmed().bold(), "failed"),
         };
-        let (num_untracked, untracked_suffix) = (
-            &self.untracked.to_string().yellow().bold(),
-            "untracked".yellow(),
-        );
-        let (num_passed, passed_suffix) = (&self.verified.to_string().green().bold(), "ok".green());
 
-        let middot = "·".dimmed();
-        // This would print for example:
-        // 27 ok; 1 untracked; 0 failed
-        println!(
-            "{:>2}{} {} {middot} {} {} {middot} {} {}",
-            "",
-            num_passed,
-            passed_suffix,
-            num_untracked,
-            untracked_suffix,
-            num_failed,
-            failed_suffix
-        );
-    }
+        let seperator = sep.as_deref().unwrap_or(DEFAULT_STAT_FRAGMENT_SEP);
 
-    fn print_multi_line(&self) {
-        let (num_failed, failed_suffix) = match self.failed > 0 {
-            true => (&self.failed.to_string().red().bold(), "failed".red()),
-            false => (&self.failed.to_string().dimmed().bold(), "failed".dimmed()),
-        };
-        let (num_untracked, untracked_suffix) = (
-            &self.untracked.to_string().yellow().bold(),
-            "untracked".yellow(),
-        );
-        let (num_passed, passed_suffix) = (&self.verified.to_string().green().bold(), "ok".green());
+        let passed = format!("{passed_count} {passed_suffix}");
+        let untracked = format!("{untracked_count} {untracked_suffix}");
+        let failed = format!("{failed_count} {failed_suffix}");
 
-        // This would print for example:
-        // 27 ok; 1 untracked; 0 failed
-        println!("{:>2} {} {}", "✅", num_passed, passed_suffix,);
-        println!("{:>2} {} {}", "🔔", num_untracked, untracked_suffix,);
-        println!("{:>2} {} {}", "❌", num_failed, failed_suffix,);
+        // This would print for example: "27 ok; 1 untracked; 0 failed"
+        format!("{passed}{seperator}{untracked}{seperator}{failed}",)
     }
 }

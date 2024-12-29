@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use anyhow::{anyhow, Result};
+use crate::licensing::{Error, Result};
 use spdx::identifiers::LICENSES;
 use spdx::{imprecise_license_id, license_id, Expression, ParseMode};
 
@@ -74,10 +74,10 @@ pub fn id_from_license_fullname(name: &str) -> Result<String> {
     let item = LICENSES
         .iter()
         .find(|(_, fullname, _)| name == *fullname)
-        .map(|(id, fullname, _)| *id);
+        .map(|(id, _, _)| *id);
 
     if item.is_none() {
-        return Err(anyhow!("no SPDX ID found for name: '{}'", name));
+        return Err(Error::SpdxLicenseNotFound(name.into()));
     }
 
     Ok(item.unwrap().to_string())

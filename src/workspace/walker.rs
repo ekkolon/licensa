@@ -317,44 +317,6 @@ mod tests {
         // assert_eq!(builder.inner_mut().git_ignore_enabled(), false);
     }
 
-    #[test]
-    fn test_walk_builder_add_ignore_file() {
-        let mut builder = WalkBuilder::new("my_codebase");
-        builder.add_ignore(".gitignore");
-
-        let expected_path = builder.workspace_root().join(".gitignore");
-        // assert_eq!(builder.inner_mut().custom_ignore_files(), &[expected_path]);
-    }
-
-    #[test]
-    fn test_walk_include_builder_add_overrides() {
-        let mut builder = WalkBuilder::new("my_repo");
-        builder
-            .include(Some(vec!["src/**/*.rs", "tests/**/*.rs"]))
-            .unwrap();
-
-        let expected_patterns = ["src/**/*.rs", "tests/**/*.rs"];
-        // assert_eq!(
-        //     builder.inner_mut().overrides().patterns(),
-        //     &expected_patterns
-        // );
-    }
-
-    #[test]
-    fn test_walk_exclude_builder_add_overrides() {
-        let mut builder = WalkBuilder::new("my_lib");
-        builder
-            .exclude(Some(vec!["vendor/**", ".target/**"]))
-            .unwrap();
-
-        let expected_patterns = ["vendor/**", ".target/**"];
-        // let overrides = builder.override_builder().build().unwrap();
-        let overrides_res = builder.build_overrides();
-        assert!(overrides_res.is_ok());
-
-        // assert_eq!(builder.inner_mut().o.patterns(), &expected_patterns);
-    }
-
     // Testing Builder Output:
     // =====================================================================
 
@@ -389,21 +351,6 @@ mod tests {
 
     // Others
     // ===================================================================
-
-    #[test]
-    fn test_workspace_walk_run_task() {
-        // Arrange
-        let (tmp_dir, mut builder) = create_test_builder();
-        builder.add_ignore(".git");
-        let walker = builder.build().expect("Failed to build workspace walk");
-
-        // Act
-        let rx = walker.run_task();
-
-        // Ensure config is an object
-        // Assert
-        // Add assertions for receiving results from the workspace walk
-    }
 
     #[test]
     fn test_workspace_walk_send_while() {
@@ -457,35 +404,11 @@ mod tests {
     }
 
     #[test]
-    fn test_workspace_walk_quit_while() {
-        let (tmp_dir, builder) = create_test_builder();
-        let mut walker = builder.build().expect("Failed to build workspace walk");
-        walker.quit_while(|_result| true);
-
-        let rx = walker.run_task();
-
-        // Assert
-        // Add assertions to verify that the quit_while condition is applied
-    }
-
-    #[test]
     fn test_workspace_walk_with_invalid_ignore() {
-        let (tmp_dir, mut builder) = create_test_builder();
+        let (_, mut builder) = create_test_builder();
         builder.add_ignore("nonexistent_ignore_file");
 
         let result = builder.build();
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_workspace_walk_with_disable_git_ignore() {
-        let (tmp_dir, mut builder) = create_test_builder();
-        builder.disable_git_ignore(true);
-        let walker = builder.build().expect("Failed to build workspace walk");
-
-        let rx = walker.run_task();
-
-        // Assert
-        // Add assertions for receiving results from the workspace walk with git ignore disabled
     }
 }

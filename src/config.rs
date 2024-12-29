@@ -1,8 +1,10 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::ops::workspace::find_workspace_config;
-use crate::schema::{LicenseId, LicenseYear};
+use crate::{
+    licensing::{LicenseId, LicensePeriod},
+    workspace::ops::find_workspace_config,
+};
 
 use anyhow::{anyhow, Result};
 use clap::Args;
@@ -45,7 +47,6 @@ pub struct Config {
     /// For a comprehensive list of the available SPDX refer to https://spdx.org/licenses/.
     #[arg(short = 't', long = "type", verbatim_doc_comment)]
     #[arg(value_name = "ID")]
-    #[arg(value_parser = crate::parser::parse_license_id)]
     pub license: Option<LicenseId>,
 
     /// The copyright owner.
@@ -67,8 +68,7 @@ pub struct Config {
     #[cfg(not(doctest))]
     #[arg(long, verbatim_doc_comment)]
     #[arg(value_name = "YEAR | PERIOD")]
-    #[arg(value_parser = crate::parser::parse_license_year)]
-    pub year: Option<LicenseYear>,
+    pub year: Option<LicensePeriod>,
 
     /// A list of glob patterns to exclude specific files or directories from the licensing process.
     ///
@@ -142,7 +142,7 @@ impl Config {
         self.license.as_deref()
     }
 
-    pub fn year(&self) -> Option<&LicenseYear> {
+    pub fn year(&self) -> Option<&LicensePeriod> {
         self.year.as_ref()
     }
 
@@ -171,7 +171,7 @@ impl Config {
 pub struct Copyright {
     pub license: LicenseId,
     pub owner: String,
-    pub year: Option<LicenseYear>,
+    pub year: Option<LicensePeriod>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Args)]
@@ -182,7 +182,7 @@ pub struct CopyrightArgs {
     /// licenses, and copyrights associated with software.
     ///
     /// See https://spdx.org/licenses/
-    #[arg(short = 't', long = "type", value_parser = crate::parser::parse_license_id)]
+    #[arg(short = 't', long = "type")]
     pub license: Option<LicenseId>,
 
     /// The copyright owner.
@@ -195,8 +195,8 @@ pub struct CopyrightArgs {
     /// When providing a range, it signifies the inclusive span of years.
     ///
     /// The special keyword `present` indicates the current year, e.g. `2022-present`.
-    #[arg(long, value_name = "YYYY | YYYY-YYYY | YYYY-present", value_parser = crate::parser::parse_license_year)]
-    pub year: Option<LicenseYear>,
+    #[arg(long, value_name = "YYYY | YYYY-YYYY | YYYY-present")]
+    pub year: Option<LicensePeriod>,
 }
 
 #[cfg(test)]

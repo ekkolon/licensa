@@ -4,6 +4,8 @@
 use crate::cli::Cli;
 use clap::CommandFactory;
 
+// TODO: Add custom error enum
+
 pub fn missing_required_arg_error<T>(arg: T) -> !
 where
     T: AsRef<str>,
@@ -28,31 +30,4 @@ pub fn serialize_args_error(cmd: &str, err: &serde_json::Error) -> ! {
     Cli::command()
         .error(clap::error::ErrorKind::ValueValidation, err_msg)
         .exit()
-}
-
-pub fn exit_invalid_value_err<T>(field: T, value: T, expected: Option<T>)
-where
-    T: AsRef<str>,
-{
-    let base_msg = format!(
-        "Invalid value {} for field {}.",
-        value.as_ref(),
-        field.as_ref(),
-    );
-
-    let mut cmd = Cli::command();
-    if let Some(expected) = expected {
-        let msg = format!("{base_msg} {}", expected.as_ref());
-        cmd.error(clap::error::ErrorKind::InvalidValue, msg).exit()
-    }
-
-    cmd.error(clap::error::ErrorKind::InvalidValue, base_msg)
-        .exit()
-}
-
-pub fn exit_io_error<M>(err: M)
-where
-    M: std::fmt::Display,
-{
-    Cli::command().error(clap::error::ErrorKind::Io, err).exit();
 }

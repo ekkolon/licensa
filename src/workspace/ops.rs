@@ -23,7 +23,8 @@
 //!
 //! - `workspace::error` contains the `WorkspaceError` type used for error handling.
 
-use crate::workspace::error::{WorkspaceError, WorkspaceResult};
+use crate::utils::{resolve_any_path, verify_dir};
+use crate::workspace::error::{Error, Result};
 
 use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
@@ -32,6 +33,8 @@ use serde_json::{Map, Value};
 use std::borrow::Borrow;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
+
+const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
 
 /// Find a Licensa configuration file in the directory specified by `workspace_root`.
 /// If a config file is found, read it and return it's contents.
@@ -44,7 +47,32 @@ use std::path::{Path, PathBuf};
 ///
 /// Returns an error if none of the possible configuration file names exist in
 /// the provided directory path or if there's an issue reading the file content.
-pub fn read_config_into<T, P, F>(workspace_root: P, file_name: F) -> WorkspaceResult<T>
+pub fn find_workspace_config<P>(workspace_root: P) -> Result<String>
+where
+    P: AsRef<Path>,
+{
+    let workspace_root = workspace_root.as_ref();
+    verify_dir(workspace_root)?;
+    let config_path = resolve_any_path(workspace_root, POSSIBLE_CONFIG_FILENAMES);
+    if let Some(path) = config_path {
+        let content = fs::read_to_string(path)?;
+        return Ok(content);
+    }
+    Err(Error::MissingConfigFile)
+}
+
+/// Find a Licensa configuration file in the directory specified by `workspace_root`.
+/// If a config file is found, read it and return it's contents.
+///
+/// # Arguments
+///
+/// * `workspace_root` - The lookup directory.
+///
+/// # Errors
+///
+/// Returns an error if none of the possible configuration file names exist in
+/// the provided directory path or if there's an issue reading the file content.
+pub fn read_config_into<T, P, F>(workspace_root: P, file_name: F) -> Result<T>
 where
     for<'de> T: Deserialize<'de>,
     P: AsRef<Path>,
@@ -71,7 +99,7 @@ where
 /// * The specified configuration file does not exist within `workspace_root`.
 /// * The configuration file exists but is not a valid file.
 /// * There's an error reading the contents of the configuration file.
-pub fn read_config<P, F>(workspace_root: P, file_name: F) -> WorkspaceResult<String>
+pub fn read_config<P, F>(workspace_root: P, file_name: F) -> Result<String>
 where
     P: AsRef<Path>,
     F: AsRef<str>,
@@ -81,14 +109,14 @@ where
 
     let file_path = workspace_root.join(file_name.as_ref());
     if !file_path.exists() {
-        let err = WorkspaceError::Generic(
+        let err = Error::Generic(
             anyhow!("path does not exist: {}", file_path.display())
                 .context("failed to read workspace config file"),
         );
         return Err(err);
     }
     if !file_path.is_file() {
-        let err = WorkspaceError::Generic(
+        let err = Error::Generic(
             anyhow!("{} is not a file", file_path.display())
                 .context("failed to read workspace config file"),
         );
@@ -114,7 +142,7 @@ where
 /// * `Ok(Some(config))` if the configuration file is found and successfully parsed.
 /// * `Ok(None)` if the configuration file is not found in any of the parent directories.
 /// * `Err(WorkspaceError)` if there's an error reading or parsing the file content.
-pub fn resolve_config_into<T, P, F>(workspace_root: P, file_name: F) -> WorkspaceResult<Option<T>>
+pub fn resolve_config_into<T, P, F>(workspace_root: P, file_name: F) -> Result<Option<T>>
 where
     for<'de> T: Deserialize<'de>,
     P: AsRef<Path>,
@@ -184,7 +212,7 @@ where
 /// * The configuration cannot be serialized.
 /// * The configuration is not a valid JSON object.
 /// * The file cannot be written.
-pub fn save_config<P, F, T>(workspace_root: P, file_name: F, config: T) -> WorkspaceResult<()>
+pub fn save_config<P, F, T>(workspace_root: P, file_name: F, config: T) -> Result<()>
 where
     P: AsRef<Path>,
     F: AsRef<str>,
@@ -195,8 +223,8 @@ where
 
     let config = serde_json::to_value(config.borrow())?;
     if !config.is_object() {
-        let err = anyhow!(WorkspaceError::InvalidConfigDataType)
-            .context("failed to save workspace config file");
+        let err =
+            anyhow!(Error::InvalidConfigDataType).context("failed to save workspace config file");
         return Err(err.into());
     }
 
@@ -224,7 +252,7 @@ where
 /// * The directory cannot be created.
 /// * The ignore file already exists in the specified directory.
 /// * The file cannot be written.
-pub fn save_ignore_file<P, F, C>(workspace_root: P, file_name: F, content: C) -> WorkspaceResult<()>
+pub fn save_ignore_file<P, F, C>(workspace_root: P, file_name: F, content: C) -> Result<()>
 where
     P: AsRef<Path>,
     F: AsRef<str>,
@@ -234,7 +262,7 @@ where
     ensure_dir(workspace_root)?;
     let ignore_path = workspace_root.join(file_name.as_ref());
     if ignore_path.exists() {
-        let err = WorkspaceError::IgnoreFileAlreadyExists(workspace_root.to_path_buf());
+        let err = Error::IgnoreFileAlreadyExists(workspace_root.to_path_buf());
         return Err(err);
     }
     fs::write(ignore_path, content).with_context(|| "failed to save workspace ignore file")?;
@@ -254,7 +282,7 @@ where
 ///
 /// * The directory does not exist and cannot be created.
 /// * The configuration file already exists in the specified directory.
-pub fn ensure_config_missing<P, F>(workspace_root: P, config_file_name: F) -> WorkspaceResult<()>
+pub fn ensure_config_missing<P, F>(workspace_root: P, config_file_name: F) -> Result<()>
 where
     P: AsRef<Path>,
     F: AsRef<str>,
@@ -262,7 +290,7 @@ where
     let workspace_root = workspace_root.as_ref();
     ensure_dir(workspace_root)?;
     if has_config(workspace_root, config_file_name) {
-        let err = WorkspaceError::ConfigFileAlreadyExists(workspace_root.to_path_buf());
+        let err = Error::ConfigFileAlreadyExists(workspace_root.to_path_buf());
         return Err(err);
     }
     Ok(())
@@ -281,9 +309,9 @@ where
 /// * The path does not exist.
 /// * The path exists but is not a directory.
 #[inline]
-pub fn ensure_dir<P: AsRef<Path>>(path: P) -> WorkspaceResult<()> {
+pub fn ensure_dir<P: AsRef<Path>>(path: P) -> Result<()> {
     if !path.as_ref().is_dir() {
-        let err = WorkspaceError::NotADirectory(path.as_ref().to_path_buf());
+        let err = Error::NotADirectory(path.as_ref().to_path_buf());
         return Err(err);
     }
     Ok(())
@@ -390,10 +418,9 @@ mod tests {
 
         // Expectes a JSON object but we provie a string
         let result = save_config(dir.as_ref(), "conf.toml", "str".to_string());
-        let expected: Result<_, WorkspaceError> =
-            Err::<(), WorkspaceError>(WorkspaceError::InvalidConfigDataType);
+        let _expected: Result<_> = Err::<(), Error>(Error::InvalidConfigDataType);
         assert!(result.is_err());
-        assert!(matches!(result, expected));
+        assert!(matches!(result, _expected));
 
         // Provide JSON object
         let result = save_config(
@@ -420,8 +447,7 @@ mod tests {
         .unwrap();
         fs::write(tmp_config_path, json_data).unwrap();
 
-        let result: Result<ExampleWsConfig, WorkspaceError> =
-            read_config_into(dir.as_ref(), "conf.json");
+        let result: Result<ExampleWsConfig> = read_config_into(dir.as_ref(), "conf.json");
         assert!(result.is_ok());
     }
 
@@ -431,10 +457,9 @@ mod tests {
 
         // At this point no config path exist so error must be some
         let result = read_config(dir.as_ref(), "conf.json");
-        let expected: Result<_, WorkspaceError> =
-            Err::<(), WorkspaceError>(WorkspaceError::MissingConfigFile);
+        let _expected: Result<_> = Err::<(), Error>(Error::MissingConfigFile);
         assert!(result.is_err());
-        assert!(matches!(result, expected));
+        assert!(matches!(result, _expected));
 
         // Create empty tmp config file. Content of read op must be ok.
         let tmp_config_path = dir.as_ref().join("conf.json");
@@ -447,12 +472,11 @@ mod tests {
 
     #[test]
     fn test_ensure_missing_ws_config() {
-        let (dir, config_path) = create_temp_file("conf.toml");
+        let (dir, _) = create_temp_file("conf.toml");
         let result = ensure_config_missing(dir.as_ref(), "conf.toml");
-        let expected: Result<_, WorkspaceError> = Err::<(), WorkspaceError>(
-            WorkspaceError::ConfigFileAlreadyExists(dir.as_ref().to_path_buf()),
-        );
-        assert!(matches!(result, expected));
+        let _expected: Result<_> =
+            Err::<(), Error>(Error::ConfigFileAlreadyExists(dir.as_ref().to_path_buf()));
+        assert!(matches!(result, _expected));
 
         dir.close().unwrap();
     }
@@ -469,10 +493,9 @@ mod tests {
         // Attempting to save an ignore file in the same dir should result
         // in an WorkspaceError::IgnoreFileAlreadyExists err.
         let file_result = save_ignore_file(dir.as_ref(), ".ignoremetoo", "more ignore patterns");
-        let expected: Result<_, WorkspaceError> = Err::<(), WorkspaceError>(
-            WorkspaceError::IgnoreFileAlreadyExists(dir.as_ref().to_path_buf()),
-        );
-        assert!(matches!(file_result, expected));
+        let _expected: Result<_> =
+            Err::<(), Error>(Error::IgnoreFileAlreadyExists(dir.as_ref().to_path_buf()));
+        assert!(matches!(file_result, _expected));
 
         // Assert the saved ignore file has the same byte length as `LICENSA_IGNORE` static ref
         let saved_path = dir.as_ref().join(file_name);
@@ -532,10 +555,11 @@ mod tests {
         let useless_file_path = dir.as_ref().join("uselessfile.txt");
 
         let result = ensure_dir(&useless_file_path);
-        let expected: Result<(), WorkspaceError> =
-            Err(WorkspaceError::NotADirectory(useless_file_path));
         assert!(result.is_err());
-        assert!(matches!(result, expected));
+        assert!(matches!(
+            result,
+            Err(Error::NotADirectory(_useless_file_path))
+        ));
 
         dir.close().unwrap();
     }

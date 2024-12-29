@@ -1,4 +1,5 @@
-pub mod task;
 mod error;
+mod task;
 
 pub use error::*;
+pub use task::*;

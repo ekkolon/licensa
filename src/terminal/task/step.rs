@@ -5,6 +5,7 @@ use crate::terminal::Result;
 pub trait Step {
     fn done(&self) -> bool;
     fn running(&self) -> bool;
+    fn pending(&self) -> bool;
     fn finish(&mut self) -> Result<()>;
     fn message(&self) -> Cow<'_, str>;
 }

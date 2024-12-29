@@ -4,76 +4,11 @@
 #[cfg(test)]
 pub mod testing;
 
-pub mod validate;
-pub mod format;
-
-use validate::is_valid_year;
-
 use anyhow::{anyhow, Result};
+use std::path::{Path, PathBuf};
 
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
-};
-
-#[inline]
-pub fn verify_dir<P: AsRef<Path>>(path: P) -> Result<()> {
-    if !path.as_ref().is_dir() {
-        return Err(anyhow!("{} is not a directory", path.as_ref().display()));
-    }
-
-    Ok(())
-}
-
-fn is_leap_year(year: u32) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
-}
-
-fn current_year() -> u32 {
-    let now = SystemTime::now();
-    let seconds_since_epoch = now
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs();
-    let seconds_in_a_non_leap_year = 365 * 24 * 60 * 60;
-
-    let mut current_year = 1970;
-    let mut remaining_seconds = seconds_since_epoch;
-
-    while remaining_seconds >= seconds_in_a_non_leap_year {
-        let seconds_in_current_year = if is_leap_year(current_year) {
-            366 * 24 * 60 * 60
-        } else {
-            seconds_in_a_non_leap_year
-        };
-
-        if remaining_seconds >= seconds_in_current_year {
-            remaining_seconds -= seconds_in_current_year;
-            current_year += 1;
-        } else {
-            break;
-        }
-    }
-
-    current_year
-}
-
-pub fn is_year_in_range<T>(year: T, start_at: u32, end_at: u32) -> bool
-where
-    T: ToString,
-{
-    let valid_year = is_valid_year(year.to_string());
-    let valid_start_year = is_valid_year(start_at);
-    let valid_end_year = is_valid_year(end_at);
-    if !valid_year || valid_start_year || valid_end_year {
-        return false;
-    }
-
-    let year: u32 = year.to_string().parse().unwrap();
-    (start_at..=end_at).contains(&year)
-}
+#[cfg(test)]
+use std::{fs::File, io::Write};
 
 /// Writes pretty-formatted JSON data to a file, creating the file if it does not exist.
 ///
@@ -85,11 +20,21 @@ where
 /// # Errors
 ///
 /// Returns an error if there are issues creating or writing to the file.
+#[cfg(test)]
 pub fn write_json<P: AsRef<Path>>(file_path: P, json_data: &serde_json::Value) -> Result<()> {
     let mut file = File::create(&file_path)?;
     let json_string = serde_json::to_string_pretty(json_data)?;
     file.write_all(json_string.as_bytes())?;
     file.flush()?;
+    Ok(())
+}
+
+#[inline]
+pub fn verify_dir<P: AsRef<Path>>(path: P) -> Result<()> {
+    if !path.as_ref().is_dir() {
+        return Err(anyhow!("{} is not a directory", path.as_ref().display()));
+    }
+
     Ok(())
 }
 
@@ -129,64 +74,6 @@ mod tests {
     use std::fs::File;
     use std::io::{Read, Seek, SeekFrom};
     use tempfile::tempdir;
-
-    #[test]
-    fn test_leap_year() {
-        // Leap years: 2000, 2004, 2008, ...
-        assert!(is_leap_year(2000));
-        assert!(is_leap_year(2004));
-        assert!(is_leap_year(2008));
-
-        // Non-leap years: 2001, 2002, 2003, ...
-        assert!(!is_leap_year(2001));
-        assert!(!is_leap_year(2002));
-        assert!(!is_leap_year(2003));
-    }
-
-    #[test]
-    fn test_get_current_year() {
-        // This test is based on the assumption that the test is run relatively soon
-        // after the initial implementation. It's not an exact test due to potential
-        // variations in the actual current year.
-
-        let current_year = current_year();
-        let now = SystemTime::now();
-        let seconds_since_epoch = now
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-        let years_since_epoch = seconds_since_epoch / (365 * 24 * 60 * 60);
-
-        // We allow a small difference due to potential variations in execution time.
-        assert!(current_year >= 1970 && current_year <= 1970 + years_since_epoch as u32 + 1);
-    }
-
-    #[test]
-    fn test_write_json_successful() {
-        let temp_dir = tempdir().expect("Failed to create temporary directory");
-        let file_path = temp_dir.path().join("output.json");
-        let json_data = serde_json::json!({
-            "name": "John Doe",
-            "age": 30,
-            "city": "Example City"
-        });
-
-        write_json(&file_path, &json_data).expect("Failed to write JSON to file");
-        assert!(file_path.exists());
-
-        let mut file = File::open(&file_path).expect("Failed to open file");
-        let mut file_content = String::new();
-        file.read_to_string(&mut file_content)
-            .expect("Failed to read file content");
-
-        let expected_content =
-            serde_json::to_string_pretty(&json_data).expect("Failed to serialize JSON");
-        assert_eq!(file_content, expected_content);
-
-        // Cleanup
-        drop(file_path);
-        temp_dir.close().expect("Failed to close temp directory");
-    }
 
     #[test]
     fn test_write_json_invalid_file_path() {

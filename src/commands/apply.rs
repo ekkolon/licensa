@@ -2,20 +2,19 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::config::Config;
-use crate::error;
 use crate::ops::scan::{get_path_suffix, is_candidate};
-use crate::ops::stats::{WorkTreeRunnerStatistics, WorkTreeRunnerStatus};
 use crate::ops::work_tree::{FileTaskResponse, WorkTree};
 use crate::template::cache::{Cachable, Cache};
 use crate::template::copyright::SPDX_COPYRIGHT_NOTICE;
 use crate::template::has_copyright_notice;
 use crate::template::header::{extract_hash_bang, SourceHeaders};
+use crate::terminal::LazyStep;
 use crate::workspace::walker::WalkBuilder;
 use crate::workspace::LicensaWorkspace;
+use crate::{error, terminal};
 
 use anyhow::Result;
 use clap::Parser;
-use colored::Colorize;
 use rayon::prelude::*;
 use serde::Serialize;
 
@@ -63,7 +62,8 @@ impl ApplyArgs {
 }
 
 pub fn run(args: &ApplyArgs) -> Result<()> {
-    let mut runner_stats = WorkTreeRunnerStatistics::new("apply", "modified");
+    let mut task = terminal::Task::new("Add SPDX license headers");
+    task.start()?;
 
     let workspace_root = std::env::current_dir()?;
     let workspace_config = args.to_config()?;
@@ -73,12 +73,9 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     // ========================================================
     let candidates = scan_workspace(&workspace_root, &workspace_config)?;
 
-    runner_stats.set_items(candidates.len());
-
     // ========================================================
     // File processing
     // ========================================================
-    let runner_stats = Arc::new(Mutex::new(runner_stats));
     let cache = Cache::<HeaderTemplate>::new();
 
     let template_engine = handlebars::Handlebars::new();
@@ -86,9 +83,7 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     let template = Arc::new(Mutex::new(template));
 
     let context = ScanContext {
-        root: workspace_root,
         cache: cache.clone(),
-        runner_stats: runner_stats.clone(),
         template,
     };
 
@@ -100,18 +95,11 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     // Clear cache
     cache.clear();
 
-    // Print output statistics
-    let mut runner_stats = runner_stats.lock().unwrap();
-    runner_stats.set_status(WorkTreeRunnerStatus::Ok);
-    runner_stats.print(true);
-
     Ok(())
 }
 
 #[derive(Clone)]
 struct ScanContext {
-    pub root: PathBuf,
-    pub runner_stats: Arc<Mutex<WorkTreeRunnerStatistics>>,
     pub cache: Arc<Cache<HeaderTemplate>>,
     pub template: Arc<Mutex<String>>,
 }
@@ -155,25 +143,12 @@ where
 fn apply_license_notice(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
     // Ignore file that already contains a copyright notice
     if has_copyright_notice(response.content.as_bytes()) {
-        context.runner_stats.lock().unwrap().add_ignore();
         return Ok(());
     }
 
     let header = resolve_header_template(context, response);
     let content = prepend_license_notice(&header.template, &response.content);
     fs::write(&response.path, content)?;
-
-    let file_path = &response
-        .path
-        .strip_prefix(&context.root)
-        .unwrap()
-        .to_str()
-        .unwrap();
-
-    // Capture task success
-    context.runner_stats.lock().unwrap().add_action_count();
-
-    print_task_success(file_path);
 
     Ok(())
 }
@@ -228,12 +203,4 @@ fn resolve_header_template(
     }
 
     context.cache.get(&cache_id).unwrap()
-}
-
-fn print_task_success<P>(path: P)
-where
-    P: AsRef<Path>,
-{
-    let result_type = "ok".green();
-    println!("apply {} ... {result_type}", path.as_ref().display())
 }

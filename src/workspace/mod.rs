@@ -7,7 +7,7 @@ pub mod error;
 pub mod ops;
 pub mod walker;
 
-use crate::schema::{LicenseId, LicenseYear};
+use crate::licensing::{LicenseId, LicensePeriod};
 
 use serde::{Deserialize, Serialize};
 
@@ -37,5 +37,5 @@ pub struct LicensaWorkspace {
     pub owner: String,
     pub license: LicenseId,
     pub exclude: Vec<String>,
-    pub year: Option<LicenseYear>,
+    pub year: Option<LicensePeriod>,
 }

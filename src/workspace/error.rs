@@ -12,17 +12,18 @@
 //!
 //! - `workspace::ops` uses these error types for error handling.
 
-use thiserror::Error;
-
 use std::path::PathBuf;
+
+/// A type alias for `anyhow::Result<T, WorkspaceError>`.
+pub type Result<T> = core::result::Result<T, Error>;
 
 /// Represents various errors that can occur during Licensa workspace operations.
 ///
 /// This enum defines types for different error scenarios encountered when handling
 /// configuration files, ignore files, data serialization, file paths, and general
 /// unexpected issues.
-#[derive(Error, Debug)]
-pub enum WorkspaceError {
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
     /// Error indicating the required `.licensarc` configuration file is missing.
     ///
     /// This error occurs when attempting to read or access the configuration file,
@@ -49,7 +50,7 @@ pub enum WorkspaceError {
     ///
     /// This error occurs when attempting to create a new `.licensarc` file,
     /// but one already exists in the specified location.
-    #[error(".licensarc config file already exists in {0}")]
+    #[error("this workspace is already configured to use Licensa")]
     ConfigFileAlreadyExists(PathBuf),
 
     /// Error indicating a `.licensaignore` file already exists.
@@ -81,6 +82,7 @@ pub enum WorkspaceError {
     #[error("path {0} is not a directory")]
     NotADirectory(PathBuf),
 
+    // TODO: Remove generic bound
     /// Other unexpected errors.
     ///
     /// This variant catches any other unforeseen errors not covered by the above
@@ -88,6 +90,3 @@ pub enum WorkspaceError {
     #[error(transparent)]
     Generic(#[from] anyhow::Error),
 }
-
-/// A type alias for `anyhow::Result<T, WorkspaceError>`.
-pub type WorkspaceResult<T> = anyhow::Result<T, WorkspaceError>;
