@@ -32,6 +32,9 @@ pub enum Error {
 
     // --- Core
     #[error(transparent)]
+    Inquire(#[from] inquire::InquireError),
+
+    #[error(transparent)]
     Json(#[from] serde_json::Error),
 
     #[error(transparent)]
@@ -51,19 +54,18 @@ impl Error {
                 .error(clap::error::ErrorKind::ValueValidation, self.to_string())
                 .exit(),
             Error::Io(err) => Cli::command().error(clap::error::ErrorKind::Io, err).exit(),
+            Error::Inquire(err) => Cli::command()
+                .error(clap::error::ErrorKind::ValueValidation, err)
+                .exit(),
             Error::Json(err) => Cli::command()
                 .error(clap::error::ErrorKind::ValueValidation, err)
                 .exit(),
-            Error::License(err) => match err {
-                _ => Cli::command()
-                    .error(clap::error::ErrorKind::ValueValidation, err)
-                    .exit(),
-            },
-            Error::Terminal(err) => match err {
-                _ => Cli::command()
-                    .error(clap::error::ErrorKind::Format, err)
-                    .exit(),
-            },
+            Error::License(err) => Cli::command()
+            .error(clap::error::ErrorKind::ValueValidation, err)
+            .exit(),
+            Error::Terminal(err) => Cli::command()
+            .error(clap::error::ErrorKind::Format, err)
+            .exit(),
             Error::Workspace(err) => match err {
                 crate::workspace::Error::Data(_) => Cli::command()
                     .error(clap::error::ErrorKind::ValueValidation, err)

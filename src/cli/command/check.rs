@@ -3,8 +3,8 @@ use crate::ops::scan::is_candidate;
 use crate::terminal::{self, Step};
 use crate::workspace::walker::WalkBuilder;
 use crate::workspace::Config;
+use crate::Result;
 
-use anyhow::Result;
 use clap::Args;
 use colored::*;
 use ignore::DirEntry;
@@ -19,7 +19,7 @@ pub struct CheckArgs {
     config: Config,
 }
 
-pub fn run(args: &mut CheckArgs) -> anyhow::Result<()> {
+pub fn run(args: &mut CheckArgs) -> Result<()> {
     let mut task = terminal::Task::lazy("Verify SPDX License headers");
     task.start()?;
 
@@ -40,7 +40,7 @@ pub fn run(args: &mut CheckArgs) -> anyhow::Result<()> {
         .iter()
         .par_bridge()
         .into_par_iter()
-        .filter_map(Result::ok)
+        .filter_map(|e| e.ok())
         .collect();
 
     let stats = check_license_headers(&candidates);

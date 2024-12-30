@@ -7,6 +7,7 @@ mod config;
 mod error;
 
 pub mod ops;
+pub mod utils;
 pub mod walker;
 
 pub use config::*;

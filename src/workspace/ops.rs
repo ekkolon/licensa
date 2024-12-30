@@ -23,16 +23,15 @@
 //!
 //! - `workspace::error` contains the `WorkspaceError` type used for error handling.
 
-use crate::utils::{resolve_any_path, verify_dir};
 use crate::workspace::error::{Error, Result};
-
-use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use std::borrow::Borrow;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
+
+use super::utils::{resolve_any_path, verify_dir};
 
 const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
 
@@ -58,7 +57,7 @@ where
         let content = fs::read_to_string(path)?;
         return Ok(content);
     }
-    Err(Error::MissingConfigFile)
+    Err(Error::ConfigFileMissing)
 }
 
 /// Find a Licensa configuration file in the directory specified by `workspace_root`.
@@ -79,9 +78,13 @@ where
     F: AsRef<str>,
 {
     let config = read_config(workspace_root, file_name)?;
-    let content = serde_json::from_str::<T>(&config)
-        .with_context(|| "failed to parse .licensarc config file")?;
-    Ok(content)
+    let content = serde_json::from_str::<T>(&config);
+    if let Err(err) = content {
+        return Err(Error::ParseConfigFailed {
+            reason: err.to_string(),
+        });
+    }
+    Ok(content.unwrap())
 }
 
 /// Reads the configuration file from the specified workspace directory.
@@ -109,22 +112,15 @@ where
 
     let file_path = workspace_root.join(file_name.as_ref());
     if !file_path.exists() {
-        let err = Error::Generic(
-            anyhow!("path does not exist: {}", file_path.display())
-                .context("failed to read workspace config file"),
-        );
-        return Err(err);
+        return Err(Error::ConfigFileMissing);
     }
     if !file_path.is_file() {
-        let err = Error::Generic(
-            anyhow!("{} is not a file", file_path.display())
-                .context("failed to read workspace config file"),
-        );
-        return Err(err);
+        return Err(Error::NotAFile(file_path));
     }
 
-    let config =
-        fs::read_to_string(file_path).with_context(|| "failed to read workspace config file")?;
+    let config = fs::read_to_string(file_path).map_err(|err| Error::ReadConfigFailed {
+        reason: err.to_string(),
+    })?;
 
     Ok(config)
 }
@@ -152,11 +148,13 @@ where
     ensure_dir(workspace_root)?;
 
     if let Some(path) = resolve_config_path(workspace_root, file_name) {
-        let content =
-            fs::read_to_string(path).with_context(|| "failed to read .licensarc config file")?;
+        let config = fs::read_to_string(path).map_err(|err| Error::ReadConfigFailed {
+            reason: err.to_string(),
+        })?;
 
-        let config = serde_json::from_str::<T>(&content)
-            .with_context(|| "failed to parse .licensarc config file")?;
+        let config: T = serde_json::from_str(&config).map_err(|err| Error::ParseConfigFailed {
+            reason: err.to_string(),
+        })?;
 
         return Ok(Some(config));
     }
@@ -223,16 +221,20 @@ where
 
     let config = serde_json::to_value(config.borrow())?;
     if !config.is_object() {
-        let err =
-            anyhow!(Error::InvalidConfigDataType).context("failed to save workspace config file");
-        return Err(err.into());
+        return Err(Error::SaveConfigFailed {
+            reason: "Provided value must be an object".into(),
+        });
     }
 
     let config = remove_null_fields(config);
-    let config = serde_json::to_string_pretty(&config)
-        .with_context(|| "failed to serialize .licensarc config file")?;
+    let config = serde_json::to_string_pretty(&config).map_err(|err| Error::SaveConfigFailed {
+        reason: err.to_string(),
+    })?;
+
     let out_path = workspace_root.join(file_name.as_ref());
-    fs::write(out_path, config).with_context(|| "failed to save .licensarc config file")?;
+    fs::write(out_path, config).map_err(|err| Error::SaveConfigFailed {
+        reason: err.to_string(),
+    })?;
 
     Ok(())
 }
@@ -260,12 +262,16 @@ where
 {
     let workspace_root = workspace_root.as_ref();
     ensure_dir(workspace_root)?;
+
     let ignore_path = workspace_root.join(file_name.as_ref());
     if ignore_path.exists() {
-        let err = Error::IgnoreFileAlreadyExists(workspace_root.to_path_buf());
-        return Err(err);
+        return Err(Error::IgnoreFileAlreadyExists(workspace_root.to_path_buf()));
     }
-    fs::write(ignore_path, content).with_context(|| "failed to save workspace ignore file")?;
+
+    fs::write(ignore_path, content).map_err(|err| Error::SaveIgnoreFileFailed {
+        reason: err.to_string(),
+    })?;
+
     Ok(())
 }
 
@@ -457,7 +463,7 @@ mod tests {
 
         // At this point no config path exist so error must be some
         let result = read_config(dir.as_ref(), "conf.json");
-        let _expected: Result<_> = Err::<(), Error>(Error::MissingConfigFile);
+        let _expected: Result<_> = Err::<(), Error>(Error::ConfigFileMissing);
         assert!(result.is_err());
         assert!(matches!(result, _expected));
 

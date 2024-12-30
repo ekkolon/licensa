@@ -6,8 +6,8 @@ use crate::license::LicenseId;
 use crate::terminal::{self, Step};
 use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
 use crate::workspace::{Config, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE, LICENSA_IGNORE_FILENAME};
+use crate::Result;
 
-use anyhow::Result;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory};
 use inquire::{Select, Text};

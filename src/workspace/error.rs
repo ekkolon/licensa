@@ -28,8 +28,14 @@ pub enum Error {
     ///
     /// This error occurs when attempting to read or access the configuration file,
     /// but it's not present in the expected location within the workspace.
-    #[error("workspace is missing a .licensarc config file")]
-    MissingConfigFile,
+    #[error("directory is not a Licensa workspace")]
+    ConfigFileMissing,
+
+    #[error("failed to read Licensa config file\nReason: {reason}")]
+    ReadConfigFailed { reason: String },
+
+    #[error("failed to save Licensa config file\nReason: {reason}")]
+    SaveConfigFailed { reason: String },
 
     /// Error indicating the `.licensaignore` file is missing from the workspace.
     ///
@@ -46,6 +52,9 @@ pub enum Error {
     #[error("licensa is already configured for {0}")]
     AlreadyConfigured(PathBuf),
 
+    #[error("failed to parse .licensarc config file\nReason: {reason}")]
+    ParseConfigFailed { reason: String },
+
     /// Error indicating a `.licensarc` configuration file already exists.
     ///
     /// This error occurs when attempting to create a new `.licensarc` file,
@@ -60,6 +69,9 @@ pub enum Error {
     #[error(".licensaignore file already exists in {0}")]
     IgnoreFileAlreadyExists(PathBuf),
 
+    #[error("failed to save .licensaignore\nReason: {reason}")]
+    SaveIgnoreFileFailed { reason: String },
+
     /// Error indicating malformed config data.
     ///
     /// This error occurs when attempting to save workspace configuration
@@ -67,26 +79,29 @@ pub enum Error {
     #[error("invalid config data type. Provided value must be an object")]
     InvalidConfigDataType,
 
+    /// Error indicating a provided path is not a directory.
+    ///
+    /// This error occurs when expecting a directory path (e.g., for a workspace
+    /// root), but the provided path points to a file or non-existent location.
+    #[error("path '{0}' is not a directory")]
+    NotADirectory(PathBuf),
+
+    /// Error indicating a provided path is not a directory.
+    ///
+    /// This error occurs when expecting a directory path (e.g., for a workspace
+    /// root), but the provided path points to a file or non-existent location.
+    #[error("path '{0}' is not a file")]
+    NotAFile(PathBuf),
+
     /// Transparent error wrapper for serialization/deserialization issues.
     #[error(transparent)]
     Data(#[from] serde_json::error::Error),
 
     /// Transparent error wrapper for file I/O operations.
     #[error(transparent)]
-    IO(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
 
-    /// Error indicating a provided path is not a directory.
-    ///
-    /// This error occurs when expecting a directory path (e.g., for a workspace
-    /// root), but the provided path points to a file or non-existent location.
-    #[error("path {0} is not a directory")]
-    NotADirectory(PathBuf),
-
-    // TODO: Remove generic bound
-    /// Other unexpected errors.
-    ///
-    /// This variant catches any other unforeseen errors not covered by the above
-    /// specific cases.
+    /// Transparent error wrapper for file ignore operations.
     #[error(transparent)]
-    Generic(#[from] anyhow::Error),
+    Ignore(#[from] ignore::Error),
 }

@@ -4,7 +4,6 @@
 //! This module provides tools for efficiently walking through a directory tree,
 //! filtering entries based on various criteria and providing control over the walk flow.
 
-use anyhow::Result;
 use crossbeam_channel::{Receiver, Sender};
 use ignore::overrides::OverrideBuilder;
 use ignore::{DirEntry, WalkBuilder as InternalWalkBuilder, WalkParallel, WalkState};
@@ -13,11 +12,13 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use super::Result;
+
 /// Represents the result of visiting a directory entry during the walk.
 ///
 /// It's either Ok(DirEntry) containing the entry information or
 /// Err(ignore::Error) if an error occurred.
-pub type WalkResult = Result<DirEntry, ignore::Error>;
+pub type WalkResult = core::result::Result<DirEntry, ignore::Error>;
 
 /// A closure type that receives a WalkResult and returns a WalkState indicating how
 /// the walk should proceed.
@@ -267,7 +268,7 @@ mod tests {
     use super::*;
     use crate::utils::testing::*;
     use ignore::DirEntry;
-    use rayon::prelude::*;
+    use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
     use tempfile::{tempdir, TempDir};
 
     // Helper function to create a test workspace walk builder
@@ -362,7 +363,7 @@ mod tests {
             .build()
             .expect("Failed to build workspace walk");
 
-        let filter_file = |res: Result<DirEntry, ignore::Error>| {
+        let filter_file = |res: core::result::Result<DirEntry, ignore::Error>| {
             res.is_ok() && res.unwrap().file_type().unwrap().is_file()
         };
 
@@ -374,7 +375,7 @@ mod tests {
             .into_iter()
             .par_bridge()
             .into_par_iter()
-            .filter_map(Result::ok)
+            .filter_map(|e| e.ok())
             .collect();
 
         assert!(entries.len() == 1);
@@ -397,7 +398,7 @@ mod tests {
             .into_iter()
             .par_bridge()
             .into_par_iter()
-            .filter_map(Result::ok)
+            .filter_map(|e| e.ok())
             .collect();
 
         assert!(entries.len() == 2);
