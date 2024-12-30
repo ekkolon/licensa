@@ -1,12 +1,12 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+use crate::Result;
 use crate::{
     licensing::{LicenseId, LicensePeriod},
     workspace::ops::find_workspace_config,
 };
 
-use anyhow::{anyhow, Result};
 use clap::Args;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -153,13 +153,7 @@ impl Config {
     {
         let ws = find_workspace_config(workspace_root.as_ref());
         if let Ok(ws) = ws {
-            let parsed = serde_json::from_str::<Config>(&ws);
-            if let Err(err) = parsed {
-                // Config file found but failed parsing.
-                return Err(anyhow!("Failed to parse Licensa config file.\n {}", err));
-            }
-
-            let mut ws_config = parsed.unwrap();
+            let mut ws_config = serde_json::from_str::<Config>(&ws)?;
             ws_config.update(self.to_owned());
             return Ok(ws_config);
         }

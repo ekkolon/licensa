@@ -4,30 +4,72 @@
 use crate::cli::Cli;
 use clap::CommandFactory;
 
-// TODO: Add custom error enum
+pub type Result<T> = core::result::Result<T, Error>;
 
-pub fn missing_required_arg_error<T>(arg: T) -> !
-where
-    T: AsRef<str>,
-{
-    Cli::command()
-        .error(
-            clap::error::ErrorKind::MissingRequiredArgument,
-            format!("Missing required argument {}", arg.as_ref()),
-        )
-        .exit()
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    // --- Custom
+    #[error("failed to serialize argument '{arg}'.\nReason: {reason}")]
+    ArgumentSerializationFailed { arg: &'static str, reason: String },
+
+    #[error("failed to deserialize argument '{arg}'. \nReason: {reason}")]
+    ArgumentDeserializationFailed { arg: &'static str, reason: String },
+
+    #[error("missing required argument '{0}'")]
+    MissingRequiredArgument(&'static str),
+
+    /// Error thrown when working with licensa workspaces.
+    #[error(transparent)]
+    Workspace(#[from] crate::workspace::Error),
+
+    /// Error thrown throughout the licensing process.
+    #[error(transparent)]
+    License(#[from] crate::licensing::Error),
+
+    /// Error thrown when printing to the console.
+    #[error(transparent)]
+    Terminal(#[from] crate::terminal::Error),
+
+    // --- Core
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
-pub fn deserialize_args_error(cmd: &str, err: &serde_json::Error) -> ! {
-    let err_msg = format!("Failed to deserialize `{cmd}` command arguemnts.\n {}", err);
-    Cli::command()
-        .error(clap::error::ErrorKind::ValueValidation, err_msg)
-        .exit()
-}
+impl Error {
+    /// Prints the error and exits.
+    pub fn exit(&self) -> ! {
+        match self {
+            Error::MissingRequiredArgument(err) => Cli::command()
+                .error(clap::error::ErrorKind::MissingRequiredArgument, err)
+                .exit(),
 
-pub fn serialize_args_error(cmd: &str, err: &serde_json::Error) -> ! {
-    let err_msg = format!("Failed to serialize `{cmd}` command arguemnts.\n {}", err);
-    Cli::command()
-        .error(clap::error::ErrorKind::ValueValidation, err_msg)
-        .exit()
+            Error::ArgumentDeserializationFailed { .. }
+            | Error::ArgumentSerializationFailed { .. } => Cli::command()
+                .error(clap::error::ErrorKind::ValueValidation, self.to_string())
+                .exit(),
+            Error::Io(err) => Cli::command().error(clap::error::ErrorKind::Io, err).exit(),
+            Error::Json(err) => Cli::command()
+                .error(clap::error::ErrorKind::ValueValidation, err)
+                .exit(),
+            Error::License(err) => match err {
+                _ => Cli::command()
+                    .error(clap::error::ErrorKind::ValueValidation, err)
+                    .exit(),
+            },
+            Error::Terminal(err) => match err {
+                _ => Cli::command()
+                    .error(clap::error::ErrorKind::Format, err)
+                    .exit(),
+            },
+            Error::Workspace(err) => match err {
+                crate::workspace::Error::Data(_) => Cli::command()
+                    .error(clap::error::ErrorKind::ValueValidation, err)
+                    .exit(),
+                _ => Cli::command().error(clap::error::ErrorKind::Io, err).exit(),
+            },
+        }
+    }
 }

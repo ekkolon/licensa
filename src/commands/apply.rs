@@ -8,17 +8,16 @@ use crate::template::cache::{Cachable, Cache};
 use crate::template::copyright::SPDX_COPYRIGHT_NOTICE;
 use crate::template::has_copyright_notice;
 use crate::template::header::{extract_hash_bang, SourceHeaders};
+use crate::terminal;
 use crate::terminal::Step;
 use crate::workspace::walker::WalkBuilder;
 use crate::workspace::LicensaWorkspace;
-use crate::{error, terminal};
 
 use anyhow::Result;
 use clap::Parser;
 use rayon::prelude::*;
 use serde::Serialize;
 
-use std::env::current_dir;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -29,49 +28,53 @@ pub struct ApplyArgs {
     config: Config,
 }
 
-impl ApplyArgs {
-    // Merge self with config::Config
-    fn to_config(&self) -> Result<LicensaWorkspace> {
-        let workspace_root = current_dir()?;
-        let config = self.config.clone().with_workspace_config(workspace_root)?;
-
-        // Verify required fields such es `license`, `owner` and `format` are set.
-        Self::check_required_fields(&config);
-
-        let args = serde_json::to_value(config);
-        if let Err(err) = args.as_ref() {
-            error::serialize_args_error("apply", err)
-        }
-
-        let config = serde_json::from_value::<LicensaWorkspace>(args.unwrap());
-        if let Err(err) = config.as_ref() {
-            error::deserialize_args_error("apply", err)
-        }
-
-        Ok(config.unwrap())
-    }
-
-    fn check_required_fields(config: &Config) {
-        if config.license.is_none() {
-            error::missing_required_arg_error("-t, --type <LICENSE>")
-        }
-        if config.owner.is_none() {
-            error::missing_required_arg_error("-o, --owner <OWNER>")
-        }
-    }
-}
-
 pub fn run(args: &ApplyArgs) -> Result<()> {
     let mut task = terminal::Task::new("Add SPDX license headers");
     task.start()?;
 
-    let workspace_root = std::env::current_dir()?;
-    let workspace_config = args.to_config()?;
+    let root_dir = std::env::current_dir()?;
+
+    let config = match args.config.clone().with_workspace_config(&root_dir) {
+        Err(err) => {
+            task.finish_err()?;
+            err.exit()
+        }
+        Ok(config) => config,
+    };
+
+    // Verify required fields such es `license`, `owner` and `format` are set.
+    if config.license.is_none() {
+        crate::Error::MissingRequiredArgument("-t, --type <LICENSE>").exit()
+    }
+
+    if config.owner.is_none() {
+        crate::Error::MissingRequiredArgument("-o, --owner <OWNER>").exit()
+    }
+
+    let args = serde_json::to_value(config);
+    if let Err(err) = args.as_ref() {
+        crate::Error::ArgumentSerializationFailed {
+            arg: "add",
+            reason: err.to_string(),
+        }
+        .exit()
+    }
+
+    let config = serde_json::from_value::<LicensaWorkspace>(args.unwrap());
+    if let Err(err) = config.as_ref() {
+        crate::Error::ArgumentDeserializationFailed {
+            arg: "add",
+            reason: err.to_string(),
+        }
+        .exit()
+    }
+
+    let config = config.unwrap();
 
     // ========================================================
     // Scanning process
     // ========================================================
-    let candidates = scan_workspace(&workspace_root, &workspace_config)?;
+    let candidates = scan_workspace(&root_dir, &config)?;
 
     // ========================================================
     // File processing
@@ -79,7 +82,7 @@ pub fn run(args: &ApplyArgs) -> Result<()> {
     let cache = Cache::<HeaderTemplate>::new();
 
     let template_engine = handlebars::Handlebars::new();
-    let template = template_engine.render_template(SPDX_COPYRIGHT_NOTICE, &workspace_config)?;
+    let template = template_engine.render_template(SPDX_COPYRIGHT_NOTICE, &config)?;
     let template = Arc::new(Mutex::new(template));
 
     let context = ScanContext {

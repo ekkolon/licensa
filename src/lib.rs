@@ -12,3 +12,5 @@ pub mod workspace;
 mod error;
 mod ops;
 mod utils;
+
+pub use error::*;
