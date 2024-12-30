@@ -24,7 +24,7 @@ pub enum Error {
 
     /// Error thrown throughout the licensing process.
     #[error(transparent)]
-    License(#[from] crate::licensing::Error),
+    License(#[from] crate::license::Error),
 
     /// Error thrown when printing to the console.
     #[error(transparent)]

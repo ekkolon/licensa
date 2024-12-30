@@ -1,6 +1,6 @@
 use crate::config::Config;
+use crate::license::template::has_copyright_notice;
 use crate::ops::scan::is_candidate;
-use crate::template::has_copyright_notice;
 use crate::terminal::{self, Step};
 use crate::workspace::walker::WalkBuilder;
 

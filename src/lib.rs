@@ -4,8 +4,7 @@
 pub mod cli;
 pub mod commands;
 pub mod config;
-pub mod licensing;
-pub mod template;
+pub mod license;
 pub mod terminal;
 pub mod workspace;
 

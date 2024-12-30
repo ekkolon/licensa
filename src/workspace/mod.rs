@@ -9,7 +9,7 @@ pub mod walker;
 
 pub use error::*;
 
-use crate::licensing::{LicenseId, LicensePeriod};
+use crate::license::{LicenseId, LicensePeriod};
 
 use serde::{Deserialize, Serialize};
 

@@ -2,6 +2,7 @@ mod error;
 mod id;
 mod lookup;
 mod period;
+pub mod template;
 
 pub use error::*;
 

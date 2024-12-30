@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::config::Config;
+use crate::license::template::cache::{Cachable, Cache};
+use crate::license::template::copyright::SPDX_COPYRIGHT_NOTICE;
+use crate::license::template::has_copyright_notice;
+use crate::license::template::header::{extract_hash_bang, SourceHeaders};
 use crate::ops::scan::{get_path_suffix, is_candidate};
 use crate::ops::work_tree::{FileTaskResponse, WorkTree};
-use crate::template::cache::{Cachable, Cache};
-use crate::template::copyright::SPDX_COPYRIGHT_NOTICE;
-use crate::template::has_copyright_notice;
-use crate::template::header::{extract_hash_bang, SourceHeaders};
 use crate::terminal;
 use crate::terminal::Step;
 use crate::workspace::walker::WalkBuilder;

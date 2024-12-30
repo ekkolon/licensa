@@ -214,7 +214,7 @@ pub fn extract_hash_bang(b: &[u8]) -> Option<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::template::copyright::{SpdxCopyrightNotice, SPDX_COPYRIGHT_NOTICE};
+    use crate::license::template::copyright::{SpdxCopyrightNotice, SPDX_COPYRIGHT_NOTICE};
 
     #[test]
     fn test_execute_template_spdx_copyright_notice() {

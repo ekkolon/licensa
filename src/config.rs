@@ -3,7 +3,7 @@
 
 use crate::Result;
 use crate::{
-    licensing::{LicenseId, LicensePeriod},
+    license::{LicenseId, LicensePeriod},
     workspace::ops::find_workspace_config,
 };
 

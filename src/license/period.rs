@@ -1,7 +1,7 @@
 // Copyright 2021-present Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::licensing::{Error, Result};
+use crate::license::{Error, Result};
 
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};

@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::licensing::{Error, Result};
+use crate::license::{Error, Result};
 use spdx::identifiers::LICENSES;
 use spdx::{imprecise_license_id, license_id, Expression, ParseMode};
 

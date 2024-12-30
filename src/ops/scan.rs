@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::template::header::SourceHeaders;
+use crate::license::template::header::SourceHeaders;
 use ignore::DirEntry;
 
 use std::borrow::Borrow;

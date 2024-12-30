@@ -6,7 +6,7 @@ use crate::terminal::{self, Step};
 use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
 use crate::{
     config::{Config, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE_FILENAME},
-    licensing::LicenseId,
+    license::LicenseId,
 };
 
 use anyhow::Result;
@@ -80,9 +80,9 @@ pub fn run(args: &InitArgs) -> Result<()> {
 }
 
 fn prompt_license_selection() -> Result<LicenseId> {
-    let license_ids = crate::licensing::list_spdx_license_names();
+    let license_ids = crate::license::list_spdx_license_names();
     let license_id: String = Select::new("Choose a License", license_ids).prompt()?;
-    let license_id = crate::licensing::id_from_license_fullname(&license_id)?;
+    let license_id = crate::license::id_from_license_fullname(&license_id)?;
     let license_id = LicenseId::from_str(&license_id)?;
     Ok(license_id)
 }
