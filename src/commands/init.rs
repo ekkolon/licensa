@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::cli::Cli;
-use crate::terminal::{self, LazyStep};
+use crate::terminal::{self, Step};
 use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
 use crate::{
     config::{Config, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE_FILENAME},

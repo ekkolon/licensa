@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::ops::scan::is_candidate;
 use crate::template::has_copyright_notice;
-use crate::terminal::{self, LazyStep};
+use crate::terminal::{self, Step};
 use crate::workspace::walker::WalkBuilder;
 
 use anyhow::Result;

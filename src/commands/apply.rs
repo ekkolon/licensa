@@ -8,7 +8,7 @@ use crate::template::cache::{Cachable, Cache};
 use crate::template::copyright::SPDX_COPYRIGHT_NOTICE;
 use crate::template::has_copyright_notice;
 use crate::template::header::{extract_hash_bang, SourceHeaders};
-use crate::terminal::LazyStep;
+use crate::terminal::Step;
 use crate::workspace::walker::WalkBuilder;
 use crate::workspace::LicensaWorkspace;
 use crate::{error, terminal};

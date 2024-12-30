@@ -171,6 +171,20 @@ impl Step for Task {
         Cow::Borrowed(&self.name)
     }
 
+    fn start(&mut self) -> Result<()> {
+        let task = self.name.clone();
+        if self.done {
+            return Err(Error::TaskAlreadyFinished { task });
+        }
+        if self.running {
+            return Err(Error::TaskAlreadyRunning { task });
+        }
+        self.start_time = Some(Instant::now());
+        self.running = true;
+        self.print_status(Status::Running)?;
+        Ok(())
+    }
+
     /// Mark the task step as finished.
     fn finish(&mut self) -> Result<()> {
         let task = self.name.clone();
@@ -183,22 +197,6 @@ impl Step for Task {
 
         self.end_time = Some(Instant::now());
         self.done = true;
-        Ok(())
-    }
-}
-
-impl LazyStep for Task {
-    fn start(&mut self) -> Result<()> {
-        let task = self.name.clone();
-        if self.done {
-            return Err(Error::TaskAlreadyFinished { task });
-        }
-        if self.running {
-            return Err(Error::TaskAlreadyRunning { task });
-        }
-        self.start_time = Some(Instant::now());
-        self.running = true;
-        self.print_status(Status::Running)?;
         Ok(())
     }
 }
