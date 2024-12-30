@@ -2,24 +2,17 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::cli::Cli;
+use crate::license::LicenseId;
 use crate::terminal::{self, Step};
 use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
-use crate::{
-    config::{Config, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE_FILENAME},
-    license::LicenseId,
-};
+use crate::workspace::{Config, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE, LICENSA_IGNORE_FILENAME};
 
 use anyhow::Result;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory};
 use inquire::{Select, Text};
-use lazy_static::lazy_static;
 use std::fmt::Debug;
 use std::{env::current_dir, str::FromStr};
-
-lazy_static! {
-    static ref LICENSA_IGNORE: &'static str = std::include_str!("../../.licensaignore");
-}
 
 #[derive(Args, Debug, Clone)]
 pub struct InitArgs {

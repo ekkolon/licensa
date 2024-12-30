@@ -8,6 +8,7 @@ use crate::{
 };
 
 use clap::Args;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -15,6 +16,10 @@ use std::path::Path;
 /// for files or directories to be excluded from license scanning or other
 /// workspace operations.
 pub const LICENSA_IGNORE_FILENAME: &str = ".licensaignore";
+
+lazy_static! {
+    pub static ref LICENSA_IGNORE: &'static str = std::include_str!("../../.licensaignore");
+}
 
 /// The filename used for Licensa's configuration file, which stores
 /// workspace-specific settings and preferences.F

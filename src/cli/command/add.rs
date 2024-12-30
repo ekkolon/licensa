@@ -1,7 +1,6 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::config::Config;
 use crate::license::template::cache::{Cachable, Cache};
 use crate::license::template::copyright::SPDX_COPYRIGHT_NOTICE;
 use crate::license::template::has_copyright_notice;
@@ -11,7 +10,7 @@ use crate::ops::work_tree::{FileTaskResponse, WorkTree};
 use crate::terminal;
 use crate::terminal::Step;
 use crate::workspace::walker::WalkBuilder;
-use crate::workspace::LicensaWorkspace;
+use crate::workspace::{Config, LicensaWorkspace};
 
 use anyhow::Result;
 use clap::Parser;

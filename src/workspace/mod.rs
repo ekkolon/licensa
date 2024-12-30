@@ -3,10 +3,13 @@
 
 //! Licensa configuration file parser and utils
 
+mod config;
 mod error;
+
 pub mod ops;
 pub mod walker;
 
+pub use config::*;
 pub use error::*;
 
 use crate::license::{LicenseId, LicensePeriod};

@@ -1,8 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use licensa::cli::{Cli, Command};
-use licensa::commands;
+use licensa::cli::{self, Cli, Command};
 
 use anyhow::Result;
 use clap::Parser;
@@ -12,15 +11,15 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::Init(args) => {
-            commands::init::run(&args)?;
+            cli::init::run(&args)?;
         }
 
         Command::Add(args) => {
-            commands::add::run(&args)?;
+            cli::add::run(&args)?;
         }
 
         Command::Check(mut args) => {
-            commands::check::run(&mut args)?;
+            cli::check::run(&mut args)?;
         }
     };
 
