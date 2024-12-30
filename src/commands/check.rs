@@ -47,7 +47,6 @@ pub fn run(args: &mut CheckArgs) -> anyhow::Result<()> {
 
     let stats = check_license_headers(&candidates);
 
-    thread::sleep(Duration::from_secs(5));
     task.finish_ok()?;
 
     task.logln(format!(
