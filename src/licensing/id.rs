@@ -1,7 +1,7 @@
 // Copyright 2021-present Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::licensing::license::try_find_by_id;
+use crate::licensing::lookup::try_find_by_id;
 use crate::licensing::Error;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
