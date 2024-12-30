@@ -218,7 +218,7 @@ impl WorkTree {
     /// # Arguments
     ///
     /// * `tree_paths` - A vector of `PathBuf` representing the work tree paths.
-    pub fn run(&self, tree_paths: Vec<PathBuf>) {
+    pub fn process(&self, tree_paths: Vec<PathBuf>) {
         let initial_tasks = self.tasks.clone();
 
         let read_file = |path: PathBuf| {
@@ -274,7 +274,7 @@ mod tests {
         };
 
         // Run with an empty work tree path vector
-        processor.run(vec![]);
+        processor.process(vec![]);
     }
 
     #[test]
@@ -307,7 +307,7 @@ mod tests {
         let (tmp_dir, tmp_file) = create_temp_file("work_tree_processor.txt");
 
         // Run with an empty work tree path vector
-        work_tree_processor.run(vec![tmp_file]);
+        work_tree_processor.process(vec![tmp_file]);
         assert_eq!(
             receiver.try_recv(),
             Ok(42),
