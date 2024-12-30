@@ -16,7 +16,7 @@ fn main() -> Result<()> {
         }
 
         Command::Add(args) => {
-            commands::apply::run(&args)?;
+            commands::add::run(&args)?;
         }
 
         Command::Check(mut args) => {

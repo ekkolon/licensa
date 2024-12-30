@@ -23,12 +23,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 #[derive(Parser, Debug, Serialize, Clone)]
-pub struct ApplyArgs {
+pub struct AddArgs {
     #[command(flatten)]
     config: Config,
 }
 
-pub fn run(args: &ApplyArgs) -> Result<()> {
+pub fn run(args: &AddArgs) -> Result<()> {
     let mut task = terminal::Task::new("Add SPDX license headers");
     task.start()?;
 
