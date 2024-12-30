@@ -50,7 +50,7 @@ impl Task {
         Task {
             name: message.as_ref().into(),
             done: false,
-            running: true,
+            running: false,
             progress_bar,
             start_time: None,
             end_time: None,
