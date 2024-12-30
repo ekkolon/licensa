@@ -6,14 +6,12 @@ use crate::workspace::walker::WalkBuilder;
 
 use anyhow::Result;
 use clap::Args;
+use colored::*;
 use ignore::DirEntry;
 use rayon::prelude::*;
-
-use colored::*;
 use std::env::current_dir;
+use std::fs;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
-use std::{fs, thread}; // Add colored crate for color output
 
 #[derive(Args, Debug)]
 pub struct CheckArgs {
