@@ -19,15 +19,24 @@ where
     inner: CacheInner<T>,
 }
 
+impl<T> Default for Cache<T>
+where
+    T: Clone + Cachable,
+ {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Cache<T>
 where
     T: Clone + Cachable,
 {
     /// Creates a new instance of `Cache`.
-    pub fn new() -> Arc<Self> {
-        Arc::new(Cache {
+    pub fn new() -> Self {
+        Cache {
             inner: Arc::new(Mutex::new(HashMap::new())),
-        })
+        }
     }
 
     /// Adds or updates the cache with the provided item.

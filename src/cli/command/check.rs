@@ -1,17 +1,14 @@
-use crate::license::template::has_copyright_notice;
-use crate::ops::scan::is_candidate;
+// Copyright 2024 Nelson Dominguez
+// SPDX-License-Identifier: Apache-2.0
+
+use crate::io::tree::{ReadTreeStatistics, Tree};
 use crate::terminal::{self, Step};
-use crate::workspace::walker::WalkBuilder;
 use crate::workspace::Config;
 use crate::Result;
 
 use clap::Args;
 use colored::*;
-use ignore::DirEntry;
-use rayon::prelude::*;
-use std::env::current_dir;
-use std::fs;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::env::{self};
 
 #[derive(Args, Debug)]
 pub struct CheckArgs {
@@ -20,98 +17,69 @@ pub struct CheckArgs {
 }
 
 pub fn run(args: &mut CheckArgs) -> Result<()> {
-    let mut task = terminal::Task::lazy("Verify SPDX License headers");
-    task.start()?;
+    let mut terminal = terminal::Task::new("Verify SPDX License headers");
+    terminal.start()?;
 
-    let workspace_root = current_dir()?;
-    let config = &args.config.with_workspace_config(&workspace_root)?;
+    let src_root = env::current_dir()?;
+    let config = &args.config.merge_into_existing_at_path(&src_root)?;
 
-    let mut walk_builder = WalkBuilder::new(&workspace_root);
-    walk_builder.exclude(Some(config.exclude.clone()))?;
+    let exclude = Some(config.exclude.to_vec());
+    let tree = Tree::new(&src_root);
+    let entries = tree.find_license_candidates(exclude)?;
+    let stats = tree.read_license_info(&entries)?;
 
-    let mut walker = walk_builder.build()?;
-    walker
-        .quit_while(|res| res.is_err())
-        .send_while(|res| is_candidate(res.unwrap()))
-        .max_capacity(None);
+    terminal.finish_ok()?;
 
-    let candidates: Vec<DirEntry> = walker
-        .run_task()
-        .iter()
-        .par_bridge()
-        .into_par_iter()
-        .filter_map(|e| e.ok())
-        .collect();
-
-    let stats = check_license_headers(&candidates);
-
-    task.finish_ok()?;
-
-    task.logln(format!(
-        "Checked {} files in {}",
-        candidates.len().to_string().bold(),
-        task.duration_in_secs()?.bold()
+    terminal.print(format!(
+        "Checked license headers on {} files. Done in {}",
+        stats.count_checked(),
+        terminal.human_duration()?
     ));
-
-    task.line_break();
+    terminal.line_break();
 
     let outstats = stats.to_single_line(None);
-    task.logln(outstats);
-    task.line_break();
+    terminal.with_indent(2);
+    terminal.logln(outstats);
+    terminal.line_break();
 
-    if stats.untracked > 0 {
-        task.logln("You have untracked files. Run `licensa add` to add license headers to them.");
+    if stats.count_untracked() > 0 {
+        terminal.with_indent(0);
+        terminal.logln("You workspace contains unlicensed files:");
+
+        terminal.with_indent(2);
+        terminal.logln("(use \"licensa add <glob...>\" to apply license headers)");
+
+        let mut untracked_files = stats.untracked().to_vec();
+
+        untracked_files.sort_by(|a, b| a.to_str().unwrap_or("").cmp(b.to_str().unwrap_or("")));
+
+        terminal.with_indent(8);
+        untracked_files.iter().for_each(|path| {
+            let rel_path = path.strip_prefix(&src_root).unwrap();
+            let msg = format!("unlicensed:   {}", rel_path.display());
+            terminal.logln(msg.red().to_string());
+        });
     }
 
     Ok(())
 }
 
-fn check_license_headers(candidates: &Vec<DirEntry>) -> CommandStats {
-    let num_verfied = AtomicUsize::new(0);
-    let num_untracked = AtomicUsize::new(0);
-    let num_failed = AtomicUsize::new(0);
-
-    candidates
-        .par_iter()
-        .for_each(|entry: &DirEntry| match fs::read(entry.path()) {
-            Ok(content) => {
-                if has_copyright_notice(&content) {
-                    num_verfied.fetch_add(1, Ordering::Relaxed);
-                } else {
-                    num_untracked.fetch_add(1, Ordering::Relaxed);
-                }
-            }
-            Err(_) => {
-                num_failed.fetch_add(1, Ordering::Relaxed);
-            }
-        });
-
-    CommandStats {
-        failed: num_failed.load(Ordering::Relaxed),
-        passed: num_verfied.load(Ordering::Relaxed),
-        untracked: num_untracked.load(Ordering::Relaxed),
-    }
-}
-
-struct CommandStats {
-    failed: usize,
-    untracked: usize,
-    passed: usize,
-}
-
 const DEFAULT_STAT_FRAGMENT_SEP: &str = "; ";
 
-impl CommandStats {
+impl ReadTreeStatistics {
     fn to_single_line(&self, sep: Option<String>) -> String {
-        let (passed_count, passed_suffix) = (&self.passed.to_string().green().bold(), "passed");
+        let (passed_count, passed_suffix) =
+            (&self.count_passed().to_string().green().bold(), "passed");
 
-        let (untracked_count, untracked_suffix) =
-            (&self.untracked.to_string().yellow().bold(), "untracked");
+        let (untracked_count, untracked_suffix) = (
+            &self.count_untracked().to_string().yellow().bold(),
+            "untracked",
+        );
 
         // Highlight failed fragments if there is at least 1 failed task.
-        let (failed_count, failed_suffix) = match self.failed > 0 {
-            true => (&self.failed.to_string().red().bold(), "failed"),
-            false => (&self.failed.to_string().dimmed().bold(), "failed"),
+        let (failed_count, failed_suffix) = match self.count_failed() > 0 {
+            true => (&self.count_failed().to_string().red().bold(), "failed"),
+            false => (&self.count_failed().to_string().dimmed().bold(), "failed"),
         };
 
         let seperator = sep.as_deref().unwrap_or(DEFAULT_STAT_FRAGMENT_SEP);

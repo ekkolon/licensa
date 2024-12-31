@@ -14,13 +14,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
-#[command(
-    next_line_help = true,
-    //flatten_help = true,
-    //override_usage = "licensa add -X [-a] [-b] <file>\n       \
-    //     myapp -Y [-c] <file1> <file2>\n       \
-    //     myapp -Z [-d|-e]"
-)]
+#[command(next_line_help = true)]
 pub struct Cli {
     #[arg(short, long, default_value_t = false)]
     pub verbose: bool,

@@ -6,6 +6,7 @@
 mod config;
 mod error;
 
+pub mod io;
 pub mod ops;
 pub mod utils;
 pub mod walker;

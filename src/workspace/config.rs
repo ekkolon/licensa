@@ -25,6 +25,10 @@ lazy_static! {
 /// workspace-specific settings and preferences.F
 pub const LICENSA_CONFIG_FILENAME: &str = ".licensarc";
 
+pub trait IntoWorkspaceConfig {
+    fn into_workspace_config(self) -> Result<Config>;
+}
+
 /// Represents the container for a Licensa config file that may be
 /// included in root directory of a software project.
 ///
@@ -152,7 +156,7 @@ impl Config {
     }
 
     /// Try to resolve workspace configuration and merge those with self.
-    pub fn with_workspace_config<T>(&mut self, workspace_root: T) -> Result<Config>
+    pub fn merge_into_existing_at_path<T>(&mut self, workspace_root: T) -> Result<Config>
     where
         T: AsRef<Path>,
     {

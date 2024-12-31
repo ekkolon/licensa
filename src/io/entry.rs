@@ -1,14 +1,12 @@
-// Copyright 2024 Nelson Dominguez
-// SPDX-License-Identifier: MIT OR Apache-2.0
+use ignore::DirEntry;
 
 use crate::license::template::header::SourceHeaders;
-use ignore::DirEntry;
 
 use std::borrow::Borrow;
 use std::path::Path;
 
 /// Checks if a directory entry is a candidate for applying a license.
-pub fn is_candidate<E>(entry: E) -> bool
+pub fn is_entry_licensable<E>(entry: E) -> bool
 where
     E: Borrow<DirEntry>,
 {

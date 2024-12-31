@@ -1,3 +1,6 @@
+// Copyright 2024 Nelson Dominguez
+// SPDX-License-Identifier: Apache-2.0
+
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error)]

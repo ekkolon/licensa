@@ -1,45 +1,54 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::license::template::cache::{Cachable, Cache};
+use crate::console::{Console, Indent};
+use crate::io::tree::Tree;
 use crate::license::template::copyright::SPDX_COPYRIGHT_NOTICE;
-use crate::license::template::has_copyright_notice;
-use crate::license::template::header::{extract_hash_bang, SourceHeaders};
-use crate::ops::scan::{get_path_suffix, is_candidate};
-use crate::ops::work_tree::{FileTaskResponse, WorkTree};
-use crate::terminal;
 use crate::terminal::Step;
-use crate::workspace::walker::WalkBuilder;
 use crate::workspace::{Config, LicensaWorkspace};
+use crate::{console, terminal, Error};
+use std::io::Write;
 
 use anyhow::Result;
 use clap::Parser;
-use rayon::prelude::*;
+use colored::Colorize;
 use serde::Serialize;
-
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
 
 #[derive(Parser, Debug, Serialize, Clone)]
 pub struct AddArgs {
     #[command(flatten)]
     config: Config,
+
+    #[arg(short = 'n', long, verbatim_doc_comment)]
+    #[arg(default_value_t = true)]
+    dry_run: bool,
 }
 
 pub fn run(args: &AddArgs) -> Result<()> {
-    let mut task = terminal::Task::new("Add SPDX license headers");
-    task.start()?;
+    let mut console = Console::init();
 
-    let root_dir = std::env::current_dir()?;
+    if args.dry_run {
+        console!(
+            console,
+            "Running in --dry-run mode. No changes will be applied"
+        )?;
 
-    let config = match args.config.clone().with_workspace_config(&root_dir) {
-        Err(err) => {
-            task.finish_err()?;
-            err.exit()
-        }
-        Ok(config) => config,
+        console.line_break()?;
+    }
+
+    //let mut terminal = terminal::Task::new("Add SPDX license headers");
+    //terminal.start()?;
+
+    let mut config = args.config.clone();
+
+    let src_root = std::env::current_dir()?;
+    let merged_config = config.merge_into_existing_at_path(&src_root);
+    if let Err(err) = merged_config {
+        //terminal.finish_err()?;
+        err.exit()
     };
+
+    let config = merged_config.unwrap();
 
     // Verify required fields such es `license`, `owner` and `format` are set.
     if config.license.is_none() {
@@ -50,8 +59,8 @@ pub fn run(args: &AddArgs) -> Result<()> {
         crate::Error::MissingRequiredArgument("-o, --owner <OWNER>").exit()
     }
 
-    let args = serde_json::to_value(config);
-    if let Err(err) = args.as_ref() {
+    let config = serde_json::to_value(config);
+    if let Err(err) = config {
         crate::Error::ArgumentSerializationFailed {
             arg: "add",
             reason: err.to_string(),
@@ -59,8 +68,8 @@ pub fn run(args: &AddArgs) -> Result<()> {
         .exit()
     }
 
-    let config = serde_json::from_value::<LicensaWorkspace>(args.unwrap());
-    if let Err(err) = config.as_ref() {
+    let config = serde_json::from_value::<LicensaWorkspace>(config.unwrap());
+    if let Err(err) = config {
         crate::Error::ArgumentDeserializationFailed {
             arg: "add",
             reason: err.to_string(),
@@ -70,139 +79,43 @@ pub fn run(args: &AddArgs) -> Result<()> {
 
     let config = config.unwrap();
 
-    // ========================================================
-    // Scanning process
-    // ========================================================
-    let candidates = scan_workspace(&root_dir, &config)?;
-
-    // ========================================================
-    // File processing
-    // ========================================================
-    let cache = Cache::<HeaderTemplate>::new();
-
     let template_engine = handlebars::Handlebars::new();
     let template = template_engine.render_template(SPDX_COPYRIGHT_NOTICE, &config)?;
-    let template = Arc::new(Mutex::new(template));
 
-    let context = ScanContext {
-        cache: cache.clone(),
-        template,
-    };
+    let mut tree = Tree::new(&src_root);
+    tree.set_dry_run(args.dry_run);
 
-    let mut worktree = WorkTree::new();
-    worktree.add_task(context, apply_license_notice);
-    worktree.run(candidates);
+    let exclude = Some(config.exclude.clone());
+    let entries = tree.find_license_candidates(exclude)?;
+    let mut modified_entries = tree.add_license(template, &entries);
 
-    // ========================================================
-    // Clear cache
-    cache.clear();
+    crate::io::utils::sort_paths(&mut modified_entries);
 
-    Ok(())
-}
+    if args.dry_run {
+        console!(
+            console,
+            "Pending changes for {} files:",
+            modified_entries.len()
+        )?;
 
-#[derive(Clone)]
-struct ScanContext {
-    pub cache: Arc<Cache<HeaderTemplate>>,
-    pub template: Arc<Mutex<String>>,
-}
+        let suggest_add =
+            "(use \"licensa add <glob...>\" without \"--dry-run\" to apply changes)".indent(2);
 
-#[derive(Debug, Clone)]
-struct HeaderTemplate {
-    pub extension: String,
-    pub template: String,
-}
-
-impl Cachable for HeaderTemplate {
-    fn cache_id(&self) -> String {
-        self.extension.to_owned()
-    }
-}
-
-// FIXME: Refactor to more generic, re-usable fn
-fn scan_workspace<P>(workspace_root: P, config: &LicensaWorkspace) -> Result<Vec<PathBuf>>
-where
-    P: AsRef<Path>,
-{
-    let mut walk_builder = WalkBuilder::new(&workspace_root);
-    walk_builder.exclude(Some(config.exclude.clone()))?;
-
-    let mut walker = walk_builder.build()?;
-    walker.quit_while(|res| res.is_err());
-    walker.send_while(|res| is_candidate(res.unwrap()));
-
-    let candidates = walker
-        .run_task()
-        .iter()
-        .par_bridge()
-        .into_par_iter()
-        .filter_map(Result::ok)
-        .map(|e| e.path().to_path_buf())
-        .collect::<Vec<PathBuf>>();
-
-    Ok(candidates)
-}
-
-fn apply_license_notice(context: &mut ScanContext, response: &FileTaskResponse) -> Result<()> {
-    // Ignore file that already contains a copyright notice
-    if has_copyright_notice(response.content.as_bytes()) {
-        return Ok(());
-    }
-
-    let header = resolve_header_template(context, response);
-    let content = prepend_license_notice(&header.template, &response.content);
-    fs::write(&response.path, content)?;
-
-    Ok(())
-}
-
-fn prepend_license_notice<H, F>(header: H, file_content: F) -> Vec<u8>
-where
-    H: AsRef<str>,
-    F: AsRef<str>,
-{
-    let template = header.as_ref().as_bytes().to_vec();
-    let file_content = file_content.as_ref().as_bytes();
-    let mut line = extract_hash_bang(file_content).unwrap_or_default();
-    let mut content = file_content.to_vec();
-
-    let line_break = b'\n';
-
-    if !line.is_empty() {
-        content = content.split_off(line.len());
-        if line[line.len() - 1] != line_break {
-            line.push(line_break);
-        }
-        content = [line, template, content].concat();
+        console!(console, "{}", suggest_add)?;
+        console.log_changes(modified_entries, "modified".indent(8), src_root);
     } else {
-        content = [template, content].concat();
+        console!(
+            console,
+            "Added license info to {} files:",
+            modified_entries.len()
+        )?;
+        console.log_changes(modified_entries, "modified".indent(6), src_root);
     }
 
-    content
-}
-
-fn resolve_header_template(
-    context: &mut ScanContext,
-    task: &FileTaskResponse,
-) -> Arc<HeaderTemplate> {
-    // FIXME: Compute cache id in FileTree
-    let cache_id = get_path_suffix(&task.path);
-
-    // Reuse cached template for this candidate
-    if !context.cache.contains(&cache_id) {
-        // Compile and cache template for this candidate
-
-        let header = SourceHeaders::find_header_definition_by_extension(&cache_id).unwrap();
-        let template = context.template.lock().unwrap();
-        let template = template.as_str();
-        let compiled_template = header.header_prefix.apply(template).unwrap();
-
-        // FIXME: Use unique cache_id for header prefixes to prevent compiling
-        // that use the same format.
-        context.cache.add(HeaderTemplate {
-            extension: cache_id.clone(),
-            template: compiled_template,
-        });
+    if args.dry_run {
+        console.line_break()?;
+        console!(console, "No changes applied")?;
     }
 
-    context.cache.get(&cache_id).unwrap()
+    Ok(())
 }

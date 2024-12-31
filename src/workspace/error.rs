@@ -52,6 +52,13 @@ pub enum Error {
     #[error("licensa is already configured for {0}")]
     AlreadyConfigured(PathBuf),
 
+    /// Error indicating Licensa configuration already exists for the given path.
+    ///
+    /// This error occurs when attempting to configure Licensa in a workspace
+    /// that already has a configuration file.
+    #[error("file at {0} is already licensed")]
+    AlreadyLicensed(PathBuf),
+
     #[error("failed to parse .licensarc config file\nReason: {reason}")]
     ParseConfigFailed { reason: String },
 

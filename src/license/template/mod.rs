@@ -5,6 +5,8 @@ pub mod cache;
 pub mod copyright;
 pub mod header;
 
+use cache::Cachable;
+
 const BREAKWORDS: &[&str] = &[
     "spdx-license-identifier: ",
     "copyright (c)",
@@ -38,4 +40,16 @@ pub fn has_copyright_notice(b: &[u8]) -> bool {
     }
 
     false
+}
+
+#[derive(Debug, Clone)]
+pub struct HeaderTemplate {
+    pub extension: String,
+    pub template: String,
+}
+
+impl Cachable for HeaderTemplate {
+    fn cache_id(&self) -> String {
+        self.extension.to_owned()
+    }
 }

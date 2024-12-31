@@ -48,7 +48,6 @@ impl Error {
             Error::MissingRequiredArgument(err) => Cli::command()
                 .error(clap::error::ErrorKind::MissingRequiredArgument, err)
                 .exit(),
-
             Error::ArgumentDeserializationFailed { .. }
             | Error::ArgumentSerializationFailed { .. } => Cli::command()
                 .error(clap::error::ErrorKind::ValueValidation, self.to_string())
@@ -61,11 +60,11 @@ impl Error {
                 .error(clap::error::ErrorKind::ValueValidation, err)
                 .exit(),
             Error::License(err) => Cli::command()
-            .error(clap::error::ErrorKind::ValueValidation, err)
-            .exit(),
+                .error(clap::error::ErrorKind::ValueValidation, err)
+                .exit(),
             Error::Terminal(err) => Cli::command()
-            .error(clap::error::ErrorKind::Format, err)
-            .exit(),
+                .error(clap::error::ErrorKind::Format, err)
+                .exit(),
             Error::Workspace(err) => match err {
                 crate::workspace::Error::Data(_) => Cli::command()
                     .error(clap::error::ErrorKind::ValueValidation, err)

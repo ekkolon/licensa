@@ -5,7 +5,9 @@ use crate::cli::Cli;
 use crate::license::LicenseId;
 use crate::terminal::{self, Step};
 use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
-use crate::workspace::{Config, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE, LICENSA_IGNORE_FILENAME};
+use crate::workspace::{
+    Config, IntoWorkspaceConfig, LICENSA_CONFIG_FILENAME, LICENSA_IGNORE, LICENSA_IGNORE_FILENAME,
+};
 use crate::Result;
 
 use clap::error::ErrorKind;
@@ -20,8 +22,8 @@ pub struct InitArgs {
     config: Config,
 }
 
-impl InitArgs {
-    pub fn into_config(&self) -> Result<Config> {
+impl IntoWorkspaceConfig for InitArgs {
+    fn into_workspace_config(self) -> Result<Config> {
         let mut config = Config::default();
         config.update(self.config.clone());
 
@@ -39,7 +41,7 @@ impl InitArgs {
 }
 
 pub fn run(args: &InitArgs) -> Result<()> {
-    let mut task = terminal::Task::lazy("Initialize Licensa workspace");
+    let mut task = terminal::Task::new("Initialize Licensa workspace");
     task.start()?;
 
     let workspace_root = current_dir()?;
@@ -48,7 +50,7 @@ pub fn run(args: &InitArgs) -> Result<()> {
         Cli::command().error(ErrorKind::Io, err).exit();
     }
 
-    let config = args.into_config()?;
+    let config = args.clone().into_workspace_config()?;
     if let Err(err) = save_config(&workspace_root, LICENSA_CONFIG_FILENAME, config) {
         task.finish_err()?;
         Cli::command().error(ErrorKind::Io, err).exit();

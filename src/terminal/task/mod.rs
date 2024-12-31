@@ -1,3 +1,6 @@
+// Copyright 2024 Nelson Dominguez
+// SPDX-License-Identifier: Apache-2.0
+
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::borrow::Cow;
@@ -10,6 +13,23 @@ pub use step::*;
 
 use super::{Error, Result};
 
+enum Template {
+    Message,
+    SpinnerMessage,
+}
+
+impl Template {
+    pub fn style(&self) -> Result<ProgressStyle> {
+        match self {
+            Template::SpinnerMessage => {
+                Ok(ProgressStyle::default_spinner().template("{spinner} {msg}")?)
+            }
+            Template::Message => Ok(ProgressStyle::default_spinner().template("{msg}")?),
+        }
+    }
+}
+
+#[derive(PartialEq)]
 enum Status {
     Success,
     Running,
@@ -24,6 +44,13 @@ impl Status {
             Self::Success => format!("{}", "✔".bold().green()),
             Self::Failed => format!("{}", "✖".bold().red()),
             _ => "".into(),
+        }
+    }
+
+    pub fn style(&self) -> Result<ProgressStyle> {
+        match self {
+            Status::Running => Template::Message.style(),
+            _ => Template::SpinnerMessage.style(),
         }
     }
 }
@@ -44,8 +71,9 @@ pub struct Task {
 impl Task {
     /// Creates a new `ProgressTracker`.
     pub fn new<M: AsRef<str>>(message: M) -> Self {
-        let progress_bar = ProgressBar::new(0);
+        let mut progress_bar = ProgressBar::new_spinner();
         progress_bar.enable_steady_tick(Duration::from_millis(100));
+        progress_bar.set_tab_width(0);
 
         Task {
             name: message.as_ref().into(),
@@ -71,79 +99,92 @@ impl Task {
     }
 
     pub fn with_indent(&mut self, indent: usize) {
-        self.indent = indent
-    }
-
-    /// Creates a new `TaskStep`.
-    pub fn lazy<M: AsRef<str>>(message: M) -> Self {
-        Self {
-            running: false,
-            ..Self::new(message)
-        }
+        self.indent = indent;
     }
 
     pub fn finish_ok(&mut self) -> Result<()> {
         self.finish()?;
-        self.print_status(Status::Success)?;
+        self.progress_bar.finish_and_clear();
+        self.set_status(Status::Success)?;
         Ok(())
     }
 
     pub fn finish_err(&mut self) -> Result<()> {
         self.finish()?;
-        self.print_status(Status::Failed)?;
+        self.set_status(Status::Failed)?;
+        self.progress_bar.finish_and_clear();
         Ok(())
     }
 
-    /// Calculate elapsed time since start.
-    pub fn duration_in_secs(&self) -> Result<String> {
+    pub fn human_duration(&self) -> Result<String> {
         if !self.done {
             return Err(Error::TaskNotFinished {
                 task: self.name.clone(),
             });
         }
-        // We can safely unwrap here because when `done` is true start and end time are set.
-        let time = self.end_time.unwrap() - self.start_time.unwrap();
-        let time_in_secs = format!("{:.2} seconds", time.as_secs_f64());
-        Ok(time_in_secs)
+
+        // Ensure we have valid start and end times.
+        let start = self.start_time.unwrap();
+        let end = self.end_time.unwrap();
+
+        // Calculate the duration between start and end.
+        let duration = end.duration_since(start);
+        let seconds = duration.as_secs_f64(); // Total time in seconds
+
+        // Now format the duration based on the given conditions
+        if seconds < 0.5 {
+            // If duration is less than 0.5s, show milliseconds
+            let millis = duration.as_millis();
+            return Ok(format!("{}ms", millis));
+        }
+
+        // If duration is greater than or equal to 0.5s, show seconds with one decimal
+        if seconds < 60.0 {
+            return Ok(format!("{:.1}s", seconds));
+        }
+
+        // If duration is over a minute, show minutes and seconds (mm:ss)
+        let minutes = (seconds / 60.0).floor();
+        let remaining_seconds = seconds - (minutes * 60.0);
+        Ok(format!("{:02}m {:.0}s", minutes, remaining_seconds))
     }
 
-    fn print_status(&self, status: Status) -> Result<()> {
-        let template = match status {
-            Status::Running => ProgressStyle::default_spinner().template("{spinner} {msg}")?,
-            _ => ProgressStyle::default_spinner().template("{msg}")?,
-        };
-
-        self.progress_bar.set_style(template);
+    fn set_status(&self, status: Status) -> Result<()> {
+        self.progress_bar.set_style(status.style()?);
 
         let message = match &status {
             Status::Running => self.message().to_string(),
             s => format!("{} {}", s.symbol(), &self.message()),
         };
 
-        match status {
-            Status::Success | Status::Failed => self
-                .progress_bar
-                .abandon_with_message(format!("{}", message.bold())),
-            _ => self.progress_bar.set_message(format!("{}", message.bold())),
-        };
+        self.progress_bar.set_message(format!("{}", message.bold()));
 
         Ok(())
     }
 
+    pub fn progess_bar(&self) -> &ProgressBar {
+        &self.progress_bar
+    }
+
     pub fn indent(&self) -> usize {
         match &self.parent {
-            None => self.indent + 2,
-            Some(parent) => parent.indent + self.indent + 2,
+            None => self.indent,
+            Some(parent) => parent.indent + self.indent,
         }
     }
 
-    pub fn logln<M: AsRef<str>>(&self, msg: M) -> &Self {
-        println!("{:>1$}{2}", "", &self.indent(), msg.as_ref());
+    pub fn logln<M: AsRef<str>>(&mut self, msg: M) -> &Self {
+        self.progress_bar.println(format!(
+            "{:>indent$}{}",
+            "",
+            msg.as_ref(),
+            indent = self.indent()
+        ));
         self
     }
 
     pub fn print<M: AsRef<str>>(&self, msg: M) -> &Self {
-        print!("{:>1$}{2}", "", &self.indent(), msg.as_ref());
+        print!("{:indent$}{}", "", msg.as_ref(), indent = self.indent());
         self
     }
 
@@ -181,7 +222,7 @@ impl Step for Task {
         }
         self.start_time = Some(Instant::now());
         self.running = true;
-        self.print_status(Status::Running)?;
+        self.set_status(Status::Running)?;
         Ok(())
     }
 
@@ -196,6 +237,7 @@ impl Step for Task {
         }
 
         self.end_time = Some(Instant::now());
+        self.running = false;
         self.done = true;
         Ok(())
     }

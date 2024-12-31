@@ -7,7 +7,8 @@ pub mod terminal;
 pub mod workspace;
 
 mod error;
-mod ops;
+mod io;
 mod utils;
 
 pub use error::*;
+pub mod console;
