@@ -1,10 +1,15 @@
-use std::{borrow::Cow, path::Path, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
-use crate::license::template::{cache::Cache, header::SourceHeaders, HeaderTemplate};
+use lazy_static::lazy_static;
+use serde::Serialize;
 
-use super::entry::get_path_suffix;
+use crate::{
+    license::template::{cache::Cache, header::SourceHeaders, HeaderTemplate},
+    Result,
+};
 
 pub struct TemplateCache {
+    engine: handlebars::Handlebars<'static>,
     cache: Cache<HeaderTemplate>,
 }
 
@@ -14,35 +19,53 @@ impl Default for TemplateCache {
     }
 }
 
+lazy_static! {
+    static ref TEMPLATE_CACHE: TemplateCache = TemplateCache::new();
+}
+
 impl TemplateCache {
-    pub fn new() -> Self {
+    fn new() -> Self {
+        let engine = handlebars::Handlebars::new();
         Self {
             cache: Cache::new(),
+            engine,
         }
     }
-    pub fn compile<'a, P>(&self, path: P, template: impl Into<Cow<'a, str>>) -> Arc<HeaderTemplate>
-    where
-        P: AsRef<Path>,
-    {
-        // FIXME: Compute cache id in FileTree
-        let cache_id = get_path_suffix(&path);
 
+    pub fn compile<K, C, D>(template_key: K, content: C, data: D) -> Result<Arc<HeaderTemplate>>
+    where
+        K: AsRef<str>,
+        C: AsRef<str>,
+        D: Serialize,
+    {
+        let cache_id = template_key.as_ref();
         // Reuse cached template for this candidate
-        if self.cache.contains(&cache_id) {
-            return self.cache.get(&cache_id).unwrap();
+        if TEMPLATE_CACHE.cache.contains(cache_id) {
+            let template = TEMPLATE_CACHE.cache.get(cache_id).unwrap();
+            return Ok(template);
         }
 
         // Compile and cache template for this candidate
-        let header = SourceHeaders::find_header_definition_by_extension(&cache_id).unwrap();
-        let compiled_template = header.header_prefix.apply(template.into()).unwrap();
+        let header = SourceHeaders::find_header_definition_by_extension(cache_id).unwrap();
+        let template = TemplateCache::render(content, data)?;
+        let template = header.header_prefix.apply(template).unwrap();
 
         // FIXME: Use unique cache_id for header prefixes to prevent compiling
         // that use the same format.
-        self.cache.add(HeaderTemplate {
-            extension: cache_id.clone(),
-            template: compiled_template,
+        TEMPLATE_CACHE.cache.add(HeaderTemplate {
+            extension: cache_id.to_string(),
+            template,
         });
 
-        self.cache.get(&cache_id).unwrap()
+        let template = TEMPLATE_CACHE.cache.get(cache_id).unwrap();
+        Ok(template)
+    }
+
+    pub fn render<'a, T: AsRef<str>, D: Serialize>(template: T, data: D) -> Result<Cow<'a, str>> {
+        let template = TEMPLATE_CACHE
+            .engine
+            .render_template(template.as_ref(), &data)?;
+
+        Ok(Cow::Owned(template))
     }
 }

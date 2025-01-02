@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::cli::Cli;
+use crate::{cli::Exit, exit_with_error, io::tree::TreeSnapshot};
 use clap::CommandFactory;
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -26,10 +26,6 @@ pub enum Error {
     #[error(transparent)]
     License(#[from] crate::license::Error),
 
-    /// Error thrown when printing to the console.
-    #[error(transparent)]
-    Terminal(#[from] crate::terminal::Error),
-
     // --- Core
     #[error(transparent)]
     Inquire(#[from] inquire::InquireError),
@@ -39,37 +35,54 @@ pub enum Error {
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    TreeInfoPoisoned(#[from] std::sync::PoisonError<TreeSnapshot>),
+
+    #[error(transparent)]
+    Ignore(#[from] ignore::Error),
+
+    #[error(transparent)]
+    TemplateRenderer(#[from] handlebars::RenderError),
 }
 
-impl Error {
+impl Exit for Error {
     /// Prints the error and exits.
-    pub fn exit(&self) -> ! {
+    fn exit(self) -> ! {
         match self {
-            Error::MissingRequiredArgument(err) => Cli::command()
-                .error(clap::error::ErrorKind::MissingRequiredArgument, err)
-                .exit(),
-            Error::ArgumentDeserializationFailed { .. }
-            | Error::ArgumentSerializationFailed { .. } => Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, self.to_string())
-                .exit(),
-            Error::Io(err) => Cli::command().error(clap::error::ErrorKind::Io, err).exit(),
-            Error::Inquire(err) => Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, err)
-                .exit(),
-            Error::Json(err) => Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, err)
-                .exit(),
-            Error::License(err) => Cli::command()
-                .error(clap::error::ErrorKind::ValueValidation, err)
-                .exit(),
-            Error::Terminal(err) => Cli::command()
-                .error(clap::error::ErrorKind::Format, err)
-                .exit(),
+            Error::MissingRequiredArgument(err) => {
+                exit_with_error!(
+                    clap::error::ErrorKind::MissingRequiredArgument,
+                    err.to_string()
+                )
+            }
+            Error::ArgumentDeserializationFailed { reason, .. }
+            | Error::ArgumentSerializationFailed { reason, .. } => {
+                exit_with_error!(clap::error::ErrorKind::ValueValidation, reason)
+            }
+            Error::TreeInfoPoisoned(err) => {
+                exit_with_error!(clap::error::ErrorKind::Io, err.to_string())
+            }
+            Error::Io(err) => exit_with_error!(clap::error::ErrorKind::Io, err.to_string()),
+            Error::Ignore(err) => exit_with_error!(clap::error::ErrorKind::Io, err.to_string()),
+            Error::TemplateRenderer(err) => {
+                exit_with_error!(clap::error::ErrorKind::Io, err.to_string())
+            }
+            Error::Inquire(err) => {
+                exit_with_error!(clap::error::ErrorKind::ValueValidation, err.to_string())
+            }
+            Error::Json(err) => {
+                exit_with_error!(clap::error::ErrorKind::ValueValidation, err.to_string())
+            }
+            Error::License(err) => {
+                exit_with_error!(clap::error::ErrorKind::ValueValidation, err.to_string())
+            }
+
             Error::Workspace(err) => match err {
-                crate::workspace::Error::Data(_) => Cli::command()
-                    .error(clap::error::ErrorKind::ValueValidation, err)
-                    .exit(),
-                _ => Cli::command().error(clap::error::ErrorKind::Io, err).exit(),
+                crate::workspace::Error::Data(_) => {
+                    exit_with_error!(clap::error::ErrorKind::ValueValidation, err.to_string())
+                }
+                _ => exit_with_error!(clap::error::ErrorKind::Io, err.to_string()),
             },
         }
     }

@@ -3,20 +3,31 @@
 
 //! Licensa configuration file parser and utils
 
-mod config;
 mod error;
+mod manifest;
 
-pub mod io;
 pub mod ops;
 pub mod utils;
-pub mod walker;
 
-pub use config::*;
+use std::{fs, path::PathBuf};
+
 pub use error::*;
+pub use manifest::*;
+use utils::{resolve_any_path, verify_dir};
 
 use crate::license::{LicenseId, LicensePeriod};
 
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+pub struct LicenseConfig {
+    pub owner: String,
+    pub license: LicenseId,
+    pub exclude: Vec<String>,
+    pub period: Option<LicensePeriod>,
+}
 
 /// Represents the container for a Licensa config file that may be
 /// included in root directory of a software project.
@@ -40,9 +51,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
-pub struct LicensaWorkspace {
-    pub owner: String,
-    pub license: LicenseId,
-    pub exclude: Vec<String>,
-    pub year: Option<LicensePeriod>,
+pub struct Workspace {
+    src_root: PathBuf,
+}
+
+impl Workspace {
+    /// Find a Licensa configuration file in the directory specified by `workspace_root`.
+    /// If a config file is found, read it and return it's contents.
+    ///
+    /// # Arguments
+    ///
+    /// * `workspace_root` - The lookup directory.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if none of the possible configuration file names exist in
+    /// the provided directory path or if there's an issue reading the file content.
+    pub fn try_find_config<P>(&self) -> Result<Option<LicenseConfig>> {
+        verify_dir(&self.src_root)?;
+        let config_path = resolve_any_path(&self.src_root, POSSIBLE_CONFIG_FILENAMES);
+        if let Some(path) = config_path {
+            let content = fs::read_to_string(path)?;
+            let content_json: LicenseConfig = serde_json::from_str(&content)?;
+            return Ok(Some(content_json));
+        }
+        Ok(None)
+    }
 }

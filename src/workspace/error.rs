@@ -14,6 +14,11 @@
 
 use std::path::PathBuf;
 
+use clap::error::ErrorKind;
+use clap::CommandFactory;
+
+use crate::{cli::Exit, exit_with_error};
+
 /// A type alias for `anyhow::Result<T, WorkspaceError>`.
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -29,7 +34,7 @@ pub enum Error {
     /// This error occurs when attempting to read or access the configuration file,
     /// but it's not present in the expected location within the workspace.
     #[error("directory is not a Licensa workspace")]
-    ConfigFileMissing,
+    MissingConfigFile,
 
     #[error("failed to read Licensa config file\nReason: {reason}")]
     ReadConfigFailed { reason: String },
@@ -50,7 +55,7 @@ pub enum Error {
     /// This error occurs when attempting to configure Licensa in a workspace
     /// that already has a configuration file.
     #[error("licensa is already configured for {0}")]
-    AlreadyConfigured(PathBuf),
+    DuplicateConfig(PathBuf),
 
     /// Error indicating Licensa configuration already exists for the given path.
     ///
@@ -74,7 +79,7 @@ pub enum Error {
     /// This error occurs when attempting to create a new `.licensaignore` file,
     /// but one already exists in the specified location.
     #[error(".licensaignore file already exists in {0}")]
-    IgnoreFileAlreadyExists(PathBuf),
+    DuplicateIgnoreFile(PathBuf),
 
     #[error("failed to save .licensaignore\nReason: {reason}")]
     SaveIgnoreFileFailed { reason: String },
@@ -107,8 +112,13 @@ pub enum Error {
     /// Transparent error wrapper for file I/O operations.
     #[error(transparent)]
     Io(#[from] std::io::Error),
+}
 
-    /// Transparent error wrapper for file ignore operations.
-    #[error(transparent)]
-    Ignore(#[from] ignore::Error),
+impl Exit for Error {
+    fn exit(self) -> ! {
+        match self {
+            Error::Data(err) => exit_with_error!(ErrorKind::ValueValidation, err),
+            err => exit_with_error!(ErrorKind::Io, err.to_string()),
+        }
+    }
 }

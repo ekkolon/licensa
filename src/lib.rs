@@ -3,7 +3,6 @@
 
 pub mod cli;
 pub mod license;
-pub mod terminal;
 pub mod workspace;
 
 mod error;
@@ -11,4 +10,5 @@ mod io;
 mod utils;
 
 pub use error::*;
-pub mod console;
+mod console;
+mod macros;

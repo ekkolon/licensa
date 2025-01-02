@@ -1,0 +1,11 @@
+[package]
+name = "licensa_flags"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies.dry-run-derive]
+path = "../dry-run-derive"
+optional = true
+
+[features]
+derive = ["dry-run-derive"]

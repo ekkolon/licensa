@@ -33,7 +33,12 @@ use std::path::{Path, PathBuf};
 
 use super::utils::{resolve_any_path, verify_dir};
 
-const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[".licensarc", ".licensarc.json"];
+const POSSIBLE_CONFIG_FILENAMES: &[&str] = &[
+    ".licensarc",
+    ".licensarc.json",
+    "licensa.yaml",
+    "licensa.yml",
+];
 
 /// Find a Licensa configuration file in the directory specified by `workspace_root`.
 /// If a config file is found, read it and return it's contents.
@@ -57,7 +62,7 @@ where
         let content = fs::read_to_string(path)?;
         return Ok(content);
     }
-    Err(Error::ConfigFileMissing)
+    Err(Error::MissingConfigFile)
 }
 
 /// Find a Licensa configuration file in the directory specified by `workspace_root`.
@@ -112,7 +117,7 @@ where
 
     let file_path = workspace_root.join(file_name.as_ref());
     if !file_path.exists() {
-        return Err(Error::ConfigFileMissing);
+        return Err(Error::MissingConfigFile);
     }
     if !file_path.is_file() {
         return Err(Error::NotAFile(file_path));
@@ -265,7 +270,7 @@ where
 
     let ignore_path = workspace_root.join(file_name.as_ref());
     if ignore_path.exists() {
-        return Err(Error::IgnoreFileAlreadyExists(workspace_root.to_path_buf()));
+        return Err(Error::DuplicateIgnoreFile(workspace_root.to_path_buf()));
     }
 
     fs::write(ignore_path, content).map_err(|err| Error::SaveIgnoreFileFailed {
@@ -463,7 +468,7 @@ mod tests {
 
         // At this point no config path exist so error must be some
         let result = read_config(dir.as_ref(), "conf.json");
-        let _expected: Result<_> = Err::<(), Error>(Error::ConfigFileMissing);
+        let _expected: Result<_> = Err::<(), Error>(Error::MissingConfigFile);
         assert!(result.is_err());
         assert!(matches!(result, _expected));
 
@@ -500,7 +505,7 @@ mod tests {
         // in an WorkspaceError::IgnoreFileAlreadyExists err.
         let file_result = save_ignore_file(dir.as_ref(), ".ignoremetoo", "more ignore patterns");
         let _expected: Result<_> =
-            Err::<(), Error>(Error::IgnoreFileAlreadyExists(dir.as_ref().to_path_buf()));
+            Err::<(), Error>(Error::DuplicateIgnoreFile(dir.as_ref().to_path_buf()));
         assert!(matches!(file_result, _expected));
 
         // Assert the saved ignore file has the same byte length as `LICENSA_IGNORE` static ref

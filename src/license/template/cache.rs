@@ -22,7 +22,7 @@ where
 impl<T> Default for Cache<T>
 where
     T: Clone + Cachable,
- {
+{
     fn default() -> Self {
         Self::new()
     }
