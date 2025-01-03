@@ -1,10 +1,11 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use licensa::cli::add::AddStep;
-use licensa::cli::check::CheckStep;
-use licensa::cli::init::InitStep;
-use licensa::cli::{installer, Cli, Command, Step};
+use licensa::cli::{Cli, Step};
+use licensa::commands::add::AddStep;
+use licensa::commands::check::CheckStep;
+use licensa::commands::init::InitStep;
+use licensa::commands::{installer, Command};
 use licensa::Result;
 
 use clap::{CommandFactory, Parser};

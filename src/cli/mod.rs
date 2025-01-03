@@ -1,16 +1,15 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-mod commands;
 mod traits;
 
-pub use commands::*;
 use serde::Serialize;
 pub use traits::*;
 pub mod flags;
 
 use clap::Parser;
-mod style;
+
+use crate::commands::Command;
 
 /// Licensa is a powerful CLI tool designed for seamless source code license management.
 ///
