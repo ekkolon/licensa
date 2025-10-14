@@ -24,7 +24,7 @@ pub struct UpdateStep {
 
 impl Step for UpdateStep {
     fn run(&mut self) -> Result<()> {
-        let logger = Logger::init();
+        let _logger = Logger::init();
         Ok(())
     }
 }

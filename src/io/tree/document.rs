@@ -62,7 +62,7 @@ impl DocumentRef {
         let entry = &self.entry.borrow();
 
         // Only consider entry if it is a regular file
-        if !entry.file_type().map_or(false, |ftype| ftype.is_file()) {
+        if !entry.file_type().is_some_and(|ftype| ftype.is_file()) {
             return false;
         }
 

@@ -130,7 +130,7 @@ impl HeaderDefinition<'_> {
     /// Checks if the given extension is contained in the list of file extensions.
     pub fn contains_extension<E: AsRef<str>>(&self, extension: Option<E>) -> bool {
         extension
-            .map_or(false, |e| self.extensions.contains(&e.as_ref()))
+            .is_some_and(|e| self.extensions.contains(&e.as_ref()))
             .to_owned()
     }
 }

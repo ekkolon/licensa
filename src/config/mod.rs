@@ -1,19 +1,15 @@
 use std::{env, fs, path::PathBuf};
 
-use clap::{ArgAction, CommandFactory, Parser};
+use clap::{ArgAction, Parser};
 use defaults::ALLOWED_CONFIG_FILENAMES;
 use serde::{Deserialize, Serialize};
 
 mod loader;
 
-pub use loader::*;
 mod defaults;
 
 use crate::{
-    workspace::{
-        ops::resolve_config_into,
-        utils::{resolve_any_path, verify_dir},
-    },
+    workspace::utils::{resolve_any_path, verify_dir},
     Error, Result,
 };
 
@@ -105,7 +101,7 @@ impl Config {
         let config_path = resolve_any_path(src_root, ALLOWED_CONFIG_FILENAMES);
         if let Some(path) = config_path {
             let content = fs::read_to_string(path)?;
-            let json_content: Config = serde_json::from_str(&content)?;
+            let _json_content: Config = serde_json::from_str(&content)?;
             return Ok(content);
         }
         Err(Error::Workspace(crate::workspace::Error::MissingConfigFile))
