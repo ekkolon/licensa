@@ -99,7 +99,7 @@ fn log_modified(
         }
         false => {
             logger.write_line(
-                Line::new("Added license info to {} files:").bind("count", num_modified),
+                Line::new("Added license info to {count} files:").bind("count", num_modified),
             )?;
         }
     }
