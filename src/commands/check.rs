@@ -44,7 +44,7 @@ impl Step for CheckStep {
         let info = tree.read_license_info()?;
         let time_end = logger.human_duration(time);
         logger.write_line(
-            Line::new("Checked license headers on {count} files. Done in {duration}")
+            Line::new("Analyzed {count} source files. Done in {duration}")
                 .bind("count", info.count())
                 .bind("duration", time_end),
         )?;
@@ -98,9 +98,7 @@ impl TreeSnapshot {
 
 fn log_unlicensed(logger: &mut Logger<'_>, snapshots: &[DocumentSnapshot]) -> Result<()> {
     logger.display("You workspace contains unlicensed files:")?;
-    logger.write_line(
-        Line::new("(use \"licensa add <glob...>\" to apply license headers)").indent(2),
-    )?;
+    logger.write_line(Line::new("(use \"licensa add <file...>\" to apply)").indent(2))?;
 
     let lines: Vec<Line> = snapshots
         .iter()
@@ -122,7 +120,7 @@ fn log_failed(logger: &mut Logger<'_>, snapshots: &[DocumentSnapshot]) -> Result
     ))?;
 
     logger.write_line(
-        Line::new("(use \"licensa add <glob...>\" to apply license headers)").indent(2),
+        Line::new("(use \"licensa add <file...>\" to apply license headers)").indent(2),
     )?;
 
     let lines: Vec<Line> = snapshots

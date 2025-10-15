@@ -8,17 +8,12 @@ use licensa::commands::init::InitStep;
 use licensa::commands::{installer, Command};
 use licensa::Result;
 
-use clap::{CommandFactory, Parser};
+use clap::Parser;
 
 fn main() -> Result<()> {
-    let cmd = Cli::command();
-    let version = cmd.get_version().unwrap_or_default();
-    let name = cmd.get_name();
-    println!("{name} v{version}");
-
     let mut cli = Cli::parse();
 
-    //println!("{}", serde_json::to_string_pretty(&cli)?);
+    // println!("{}", serde_json::to_string_pretty(&cli)?);
     match cli.step {
         Command::Init(ref mut args) => InitStep::run(args)?,
         Command::Add(ref mut args) => AddStep::run(args)?,

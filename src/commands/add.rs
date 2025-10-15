@@ -35,7 +35,7 @@ impl Step for AddStep {
         let mut logger = Logger::init();
 
         if self.dry_run {
-            logger.display("Running with \"--dry-run\" flag. No changes will be applied")?;
+            logger.display("Using \"--dry-run\" flag. No changes will be applied")?;
             logger.line_break()?;
         }
 
@@ -90,16 +90,16 @@ fn log_modified(
     match dry_run {
         true => {
             logger.write_line(
-                Line::new("Pending changes for {count} files:").bind("count", num_modified),
+                Line::new("Found pending changes for {count} files:").bind("count", num_modified),
             )?;
             logger.write_line(
-                Line::new("(use \"licensa add <glob...>\" without \"--dry-run\" to apply changes)")
+                Line::new("(use \"licensa add <file...>\" without \"--dry-run\" to apply)")
                     .indent(2),
             )?;
         }
         false => {
             logger.write_line(
-                Line::new("Added license info to {count} files:").bind("count", num_modified),
+                Line::new("License headers added to {count} files:").bind("count", num_modified),
             )?;
         }
     }

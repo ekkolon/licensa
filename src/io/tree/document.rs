@@ -1,22 +1,12 @@
-use std::{
-    borrow::{Borrow, Cow},
-    fs::{self},
-    path::{Path, PathBuf},
-};
-
+use crate::io::template_cache::TemplateCache;
+use crate::license::template::copyright::SPDX_COPYRIGHT_NOTICE;
+use crate::license::template::header::extract_hash_bang;
+use crate::Result;
 use ignore::DirEntry;
 use serde::Serialize;
-
-use crate::{
-    license::template::{
-        copyright::SPDX_COPYRIGHT_NOTICE,
-        header::extract_hash_bang,
-        //header::{extract_hash_bang, HeaderDefinition, SourceHeaders},
-    },
-    Result,
-};
-
-use crate::io::template_cache::TemplateCache;
+use std::borrow::{Borrow, Cow};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
 pub struct DocumentRef {
@@ -27,10 +17,6 @@ impl DocumentRef {
     pub fn new(entry: DirEntry) -> Self {
         DocumentRef { entry }
     }
-
-    //pub fn path(&self) -> &Path {
-    //    self.entry.path()
-    //}
 
     pub fn read_to_snapshot(&self) -> Result<DocumentSnapshot> {
         let entry = self.read()?;

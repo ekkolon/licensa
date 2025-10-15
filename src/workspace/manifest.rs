@@ -107,10 +107,6 @@ pub struct LicensaManifest {
 }
 
 impl LicensaManifest {
-    pub fn try_load() {
-        //resolve_config_into(workspace_root, file_name)
-    }
-
     pub fn new() -> Self {
         Default::default()
     }

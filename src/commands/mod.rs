@@ -14,7 +14,7 @@ use init::InitStep;
 use serde::Serialize;
 
 const HELP_LONG_COMMAND_INIT: &str = color_print::cstr!(
-    r#"Initialize the Licensa configuration for the current workspace.
+    r#"Add workspace-wide Licensa configuration.
     
 The `init` command simplifies the configuration process by generating a `.licensarc`
 file in the current directory, which contains workspace-wide Licensa settings. This
@@ -44,7 +44,7 @@ This command fails if:
 );
 
 const HELP_LONG_COMMAND_ADD: &str = color_print::cstr!(
-    r#"Apply license headers to source code files.
+    r#"Add license headers to source code files.
 The `add` command scans specified directories and adds license headers to source files
 that are missing them. Existing headers are preserved, and no previously applied licenses
 will be overwritten.
@@ -62,11 +62,11 @@ This command fails if:
 
 #[derive(Debug, Parser, Serialize)]
 pub enum Command {
-    /// Initialize the Licensa configuration for the current workspace.
+    /// Add workspace-wide Licensa configuration.
     #[command(long_about = HELP_LONG_COMMAND_INIT)]
     Init(InitStep),
 
-    /// Apply license headers to source code files.
+    /// Add license headers to source code files.
     #[command(long_about = HELP_LONG_COMMAND_ADD, visible_alias = "apply")]
     Add(AddStep),
 
@@ -74,7 +74,7 @@ pub enum Command {
     #[command(long_about = HELP_LONG_COMMAND_CHECK, visible_alias = "verify")]
     Check(CheckStep),
 
-    /// Verify the presence of license headers in one or more files.
-    #[command(subcommand, name = "self", long_about = HELP_LONG_COMMAND_CHECK)]
+    /// Manage Licensa installation.
+    #[command(subcommand, name = "self")]
     Installer(installer::Command),
 }

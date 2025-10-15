@@ -7,41 +7,41 @@ pub mod uninstall;
 pub mod update;
 
 const HELP_LONG_COMMAND_UPDATE: &str = color_print::cstr!(
-    r#"Verify the presence of license headers in one or more files.
-The `check` command inspects files to ensure they contain the required license headers.
+    r#"Update Licensa to the latest available version.
 
-It supports glob patterns, making it easy to validate multiple files recursively.
-Use this command to confirm compliance with licensing requirements across your codebase.
+The `update` command checks for a newer version of Licensa and installs it if found.
+It ensures you have the latest features, performance improvements, and security patches.
+
+This command supports both interactive and non-interactive modes. 
+In non-interactive environments (e.g., CI), use the `--force` or `--yes` flag to skip confirmation.
 
 This command fails if:
-    - Invalid glob patterns are provided.
-    - Specified files or directories are unreadable."#
+    - The update server cannot be reached.
+    - The binary cannot be replaced due to permission issues.
+    - The downloaded version is invalid or corrupted."#
 );
 
 const HELP_LONG_COMMAND_UNINSTALL: &str = color_print::cstr!(
-    r#"Apply license headers to source code files.
-The `add` command scans specified directories and adds license headers to source files
-that are missing them. Existing headers are preserved, and no previously applied licenses
-will be overwritten.
+    r#"Uninstall Licensa from your system.
 
-You can customize file inclusion and exclusion using `.gitignore` or `.licensaignore` patterns,
-with `.licensaignore` taking precedence. If a `.licensarc` config file exists, its settings
-will be merged with command-line arguments, with the latter taking precedence.
+The `uninstall` command removes the Licensa binary and any associated configuration data.
+You will be asked for confirmation unless `--force` or `--yes` is provided.
+
+Use this command if you want to completely remove Licensa from your environment.
 
 This command fails if:
-    - The `.licensarc` configuration file has an invalid format (if used).
-    - Invalid argument values are supplied.
-    - Required arguments are missing.
-    - Insufficient read/write permissions for the specified files or directories."#
+    - Required permissions are missing to remove the binary or configuration files.
+    - The process is aborted by the user.
+    - File operations fail due to locks or corrupted paths."#
 );
 
 #[derive(Debug, Subcommand, Serialize)]
 pub enum Command {
-    /// Initialize the Licensa configuration for the current workspace.
+    /// Update Licensa to the latest available version.
     #[command(long_about = HELP_LONG_COMMAND_UPDATE)]
     Update(UpdateStep),
 
-    /// Apply license headers to source code files.
+    /// Uninstall Licensa from your system.
     #[command(long_about = HELP_LONG_COMMAND_UNINSTALL)]
     Uninstall(UninstallStep),
 }
