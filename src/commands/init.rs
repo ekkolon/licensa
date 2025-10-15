@@ -53,10 +53,10 @@ impl Step for InitStep {
         save_ignore_file(src_root, LICENSA_IGNORE_FILENAME, LICENSA_IGNORE.as_bytes())
             .unwrap_or_exit();
 
-        logger.display("Successfully initialized Licensa workspace")?;
+        logger.display("Workspace initialized successfully.")?;
+        logger.display("Created configuration and ignore files.")?;
         logger.line_break()?;
-
-        logger.display("Use `licensa add` to apply license headers to files.")?;
+        logger.display("Next step: run `licensa add` to apply license headers.")?;
 
         Ok(())
     }
@@ -64,13 +64,12 @@ impl Step for InitStep {
 
 fn prompt_license_selection() -> Result<LicenseId> {
     let license_ids = crate::license::list_spdx_license_names();
-    let license_id: String = Select::new("Choose a License", license_ids).prompt()?;
-    let license_id = crate::license::id_from_license_fullname(&license_id)?;
-    let license_id = LicenseId::from_str(&license_id)?;
-    Ok(license_id)
+    let choice: String = Select::new("Select a license:", license_ids).prompt()?;
+    let id = crate::license::id_from_license_fullname(&choice)?;
+    Ok(LicenseId::from_str(&id)?)
 }
 
 fn prompt_copyright_owner() -> Result<String> {
-    let owner = Text::new("Copyright owner").prompt()?;
+    let owner = Text::new("Enter copyright owner:").prompt()?;
     Ok(owner)
 }

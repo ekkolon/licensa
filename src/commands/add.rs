@@ -35,7 +35,9 @@ impl Step for AddStep {
         let mut logger = Logger::init();
 
         if self.dry_run {
-            logger.display("Using \"--dry-run\" flag. No changes will be applied")?;
+            logger.write_line(Line::new(
+                "Running in dry-run mode (no files will be modified).",
+            ))?;
             logger.line_break()?;
         }
 
@@ -87,36 +89,49 @@ fn log_modified(
     dry_run: bool,
 ) -> Result<()> {
     let num_modified = snapshots.len();
+
     match dry_run {
         true => {
-            logger.write_line(
-                Line::new("Found pending changes for {count} files:").bind("count", num_modified),
-            )?;
-            logger.write_line(
-                Line::new("(use \"licensa add <file...>\" without \"--dry-run\" to apply)")
-                    .indent(2),
-            )?;
+            if num_modified == 0 {
+                logger.write_line(Line::new("No files require license updates."))?;
+            } else {
+                logger.write_line(
+                    Line::new("Detected {count} file(s) needing license headers:")
+                        .bind("count", num_modified),
+                )?;
+                logger.write_line(
+                    Line::new("Run without --dry-run to apply the changes.").indent(2),
+                )?;
+            }
         }
         false => {
-            logger.write_line(
-                Line::new("License headers added to {count} files:").bind("count", num_modified),
-            )?;
+            if num_modified == 0 {
+                logger.write_line(Line::new(
+                    "All files already contain valid license headers.",
+                ))?;
+            } else {
+                logger.write_line(
+                    Line::new("Added license headers to {count} file(s):")
+                        .bind("count", num_modified),
+                )?;
+            }
         }
     }
 
-    let log_line = |snapshot: &DocumentSnapshot| {
-        Line::new("modified:   {path}")
-            .bind("path", snapshot.path().display())
-            .colored(Color::Green)
-            .indent(6)
-    };
+    if num_modified > 0 {
+        let log_line = |snapshot: &DocumentSnapshot| {
+            Line::new("modified:   {path}")
+                .bind("path", snapshot.path().display())
+                .colored(Color::Green)
+                .indent(8)
+        };
 
-    let lines: Vec<Line> = snapshots.iter().map(log_line).collect();
-    logger.write_lines(lines)?;
+        logger.write_lines(snapshots.iter().map(log_line))?;
+    }
 
-    if dry_run {
+    if dry_run && num_modified > 0 {
         logger.line_break()?;
-        logger.write_line(Line::new("No changes applied with \"--dry-run\" flag set"))?;
+        logger.write_line(Line::new("No changes written (dry run)."))?;
     }
 
     Ok(())

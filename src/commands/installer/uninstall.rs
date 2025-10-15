@@ -3,7 +3,7 @@
 
 use crate::cli::flags::Flags;
 use crate::cli::{Exit, Step};
-use crate::console::Logger;
+use crate::console::{Line, Logger};
 use crate::{Error, Result};
 
 use clap::Parser;
@@ -33,32 +33,33 @@ impl Step for UninstallStep {
 
 fn confirm(logger: &mut Logger<'_>, cmd: &str, force: bool) -> Result<()> {
     if force {
-        logger.display("Force flag detected. Skipping confirmation.")?;
+        logger.write_line(Line::new(format!(
+            "Force mode enabled. Skipping confirmation for `{cmd}`."
+        )))?;
         return Ok(());
     }
 
-    let message = format!("Are you sure you want to uninstall {cmd}?");
-    let help_message = format!(
-        "This will remove all data associated with {cmd} from your system and cannot be undone."
+    let message = format!("Uninstall `{cmd}`?");
+    let help = format!(
+        "All configuration and data for `{cmd}` will be permanently removed. This action cannot be undone."
     );
 
-    let action = Confirm::new(&message)
+    let response = Confirm::new(&message)
         .with_default(false)
-        .with_help_message(&help_message)
+        .with_help_message(&help)
         .prompt()
         .map_err(Error::Inquire);
 
-    match action {
+    match response {
         Ok(true) => {
-            logger.display("User confirmed.")?; // (todo): remove when implementation done
-            return Ok(());
+            logger.write_line(Line::new("Proceeding with uninstall..."))?;
+            // TODO: perform uninstall logic here
+            Ok(())
         }
         Ok(false) => {
-            logger.display("Operation aborted by user.")
-            // (todo): Exit here
+            logger.write_line(Line::new("Uninstall cancelled."))?;
+            Ok(())
         }
         Err(err) => err.exit(),
-    }?;
-
-    Ok(())
+    }
 }

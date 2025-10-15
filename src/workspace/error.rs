@@ -71,7 +71,7 @@ pub enum Error {
     ///
     /// This error occurs when attempting to create a new `.licensarc` file,
     /// but one already exists in the specified location.
-    #[error("this workspace is already configured to use Licensa")]
+    #[error("Licensa is already configured for this workspace")]
     ConfigFileAlreadyExists(PathBuf),
 
     /// Error indicating a `.licensaignore` file already exists.
