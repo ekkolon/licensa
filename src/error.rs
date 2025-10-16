@@ -1,7 +1,7 @@
 // Copyright 2024 Nelson Dominguez
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-use crate::{cli::Exit, exit_with_error, io::tree::TreeSnapshot};
+use crate::{cli::Exit, exit_with_error, io::TreeSnapshot};
 use clap::CommandFactory;
 
 pub type Result<T> = core::result::Result<T, Error>;

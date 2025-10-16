@@ -4,9 +4,8 @@
 use crate::cli::flags::Flags;
 use crate::cli::Step;
 use crate::cli::UnwrapOrExit;
-use crate::console::Line;
-use crate::console::Logger;
-use crate::io::tree::{DocumentSnapshot, DocumentState, TreeBuilder, TreeSnapshot};
+use crate::utils::console::{Logger, Line};
+use crate::io::{DocumentSnapshot, DocumentState, TreeBuilder, TreeSnapshot};
 use crate::workspace::LicensaManifest;
 use crate::Result;
 
@@ -95,7 +94,7 @@ impl TreeSnapshot {
 }
 
 fn log_unlicensed(logger: &mut Logger<'_>, snapshots: &[DocumentSnapshot]) -> Result<()> {
-    logger.write_line(Line::new("Unlicensed files detected:"))?;
+    logger.write_line("Unlicensed files detected:")?;
     logger.write_line(Line::new("(use \"licensa add <file...>\" to insert headers)").indent(2))?;
 
     let lines = snapshots.iter().map(|s| {

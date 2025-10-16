@@ -6,9 +6,9 @@ use crate::cli::Exit;
 use crate::cli::Step;
 use crate::cli::UnwrapOrExit;
 use crate::cli::UnwrapOrExitWith;
-use crate::console::Line;
-use crate::console::Logger;
-use crate::io::tree::{DocumentSnapshot, DocumentState, TreeBuilder};
+use crate::io::Tree;
+use crate::io::{DocumentSnapshot, DocumentState};
+use crate::utils::console::{Line, Logger};
 use crate::workspace::LicensaManifest;
 use crate::workspace::LicenseConfig;
 use crate::Error;
@@ -23,9 +23,8 @@ use serde::Serialize;
 #[derive(Parser, Debug, Serialize)]
 pub struct AddStep {
     #[command(flatten)]
-    config: LicensaManifest,
+    manifest: LicensaManifest,
 
-    /// Specifies the command or subcommand to execute.
     #[command(flatten)]
     flags: Flags,
 }
@@ -35,13 +34,11 @@ impl Step for AddStep {
         let mut logger = Logger::init();
 
         if self.dry_run {
-            logger.write_line(Line::new(
-                "Running in dry-run mode (no files will be modified).",
-            ))?;
+            logger.write_line("Running in dry-run mode (no files will be modified).")?;
             logger.line_break()?;
         }
 
-        let mut config = self.config.clone();
+        let mut config = self.manifest.clone();
 
         let src_root = std::env::current_dir()?;
         let config = config
@@ -49,11 +46,11 @@ impl Step for AddStep {
             .unwrap_or_exit();
 
         // Verify required fields such es `license`, `owner` and `format` are set.
-        config
+        let _license = config
             .license()
             .unwrap_or_exit_with(Error::MissingRequiredArgument("-t, --type <LICENSE>"));
 
-        config
+        let _license_owner = config
             .holder()
             .unwrap_or_exit_with(Error::MissingRequiredArgument("-o, --owner <OWNER>"));
 
@@ -65,19 +62,17 @@ impl Step for AddStep {
             .map_err(Error::Json)
             .unwrap_or_exit();
 
-        let tree = TreeBuilder::new(&src_root)
+        let tree_snapshot = Tree::builder(&src_root)
             .set_dry_run(self.dry_run)
             .exclude(config.exclude.to_vec())?
             .build()
-            .unwrap_or_else(|err| err.exit());
-
-        let info = tree
+            .unwrap_or_exit()
             .update_license_info(&config)
-            .unwrap_or_else(|err| err.exit());
+            .unwrap_or_exit();
 
-        let modified = info.get_state(DocumentState::Modified);
+        let modified_docs = tree_snapshot.get_state(DocumentState::Modified);
 
-        log_modified(&mut logger, &modified, self.dry_run).unwrap_or_else(|err| err.exit());
+        log_modified(&mut logger, &modified_docs, self.dry_run).unwrap_or_else(|err| err.exit());
 
         Ok(())
     }
@@ -93,7 +88,7 @@ fn log_modified(
     match dry_run {
         true => {
             if num_modified == 0 {
-                logger.write_line(Line::new("No files require license updates."))?;
+                logger.write_line("No files require license updates.")?;
             } else {
                 logger.write_line(
                     Line::new("Detected {count} file(s) needing license headers:")
@@ -106,9 +101,7 @@ fn log_modified(
         }
         false => {
             if num_modified == 0 {
-                logger.write_line(Line::new(
-                    "All files already contain valid license headers.",
-                ))?;
+                logger.write_line("All files already contain valid license headers.")?;
             } else {
                 logger.write_line(
                     Line::new("Added license headers to {count} file(s):")

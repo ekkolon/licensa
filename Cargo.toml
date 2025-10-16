@@ -23,7 +23,7 @@ include = [
 
 [[bin]]
 name = "licensa"
-path = "src/bin/licensa.rs"
+path = "bin/licensa.rs"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive", "wrap_help", "color", "env"] }

@@ -21,8 +21,8 @@ impl<'a> Logger<'a> {
     }
 
     /// Write a formatted line to the console
-    pub fn write_line(&mut self, line: Line) -> Result<()> {
-        writeln!(self.handle, "{}", line.format())?;
+    pub fn write_line(&mut self, line: impl Into<Line<'a>>) -> Result<()> {
+        writeln!(self.handle, "{}", line.into().format())?;
         Ok(())
     }
 
@@ -112,5 +112,14 @@ impl<'a> Line<'a> {
         }
 
         output
+    }
+}
+
+impl<'a> From<&str> for Line<'a> {
+    fn from(value: &str) -> Self {
+        Line {
+            content: Cow::Owned(value.to_owned()),
+            bindings: HashMap::new(),
+        }
     }
 }

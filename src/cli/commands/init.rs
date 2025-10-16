@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
 use crate::cli::{Step, UnwrapOrExit};
-use crate::console::Logger;
+use crate::utils::console::Logger;
 use crate::license::LicenseId;
 use crate::workspace::ops::{ensure_config_missing, save_config, save_ignore_file};
 use crate::workspace::{
@@ -19,18 +19,19 @@ use std::{env::current_dir, str::FromStr};
 #[derive(Parser, Debug, Clone, Serialize)]
 pub struct InitStep {
     #[command(flatten)]
-    config: LicensaManifest,
+    manifest: LicensaManifest,
 }
 
 impl IntoWorkspaceConfig for InitStep {
     fn into_workspace_config(self) -> Result<LicensaManifest> {
         let mut config = LicensaManifest::default();
-        config.update(self.config.clone());
+        config.update(self.manifest.clone());
 
         if config.license.is_none() {
             let license_id = prompt_license_selection()?;
             let _ = config.license.insert(license_id);
         }
+
         if config.owner.is_none() {
             let owner = prompt_copyright_owner()?;
             let _ = config.owner.insert(owner);
@@ -56,7 +57,7 @@ impl Step for InitStep {
         logger.display("Workspace initialized successfully.")?;
         logger.display("Created configuration and ignore files.")?;
         logger.line_break()?;
-        logger.display("Next step: run `licensa add` to apply license headers.")?;
+        logger.display("Next step: run \"licensa add\" to apply license headers.")?;
 
         Ok(())
     }

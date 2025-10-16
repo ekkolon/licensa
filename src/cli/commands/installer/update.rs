@@ -3,7 +3,7 @@
 
 use crate::cli::flags::Flags;
 use crate::cli::Step;
-use crate::console::Logger;
+use crate::utils::console::Logger;
 use crate::workspace::LicensaManifest;
 use crate::Result;
 
@@ -15,7 +15,7 @@ use serde::Serialize;
 #[derive(Parser, Debug, Serialize)]
 pub struct UpdateStep {
     #[command(flatten)]
-    config: LicensaManifest,
+    manifest: LicensaManifest,
 
     /// Specifies the command or subcommand to execute.
     #[command(flatten)]

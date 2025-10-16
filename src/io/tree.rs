@@ -5,11 +5,96 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use ignore::DirEntry;
 use ignore::{overrides::OverrideBuilder, WalkBuilder, WalkState};
+use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use serde::Serialize;
 
-use super::{DocumentRef, DocumentSnapshot};
-use crate::Result;
+use super::document::{DocumentRef, DocumentSnapshot};
+use crate::{io::document::DocumentState, Result};
 
+/// Snapshot of a workspace tree after a licensing pass.
+///
+/// Contains lists of documents grouped by their detected state.
+#[derive(Clone)]
+pub struct TreeSnapshot {
+    pub(super) src_root: PathBuf,
+    pub(super) failed: Vec<DocumentSnapshot>,
+    pub(super) unlicensed: Vec<DocumentSnapshot>,
+    pub(super) modified: Vec<DocumentSnapshot>,
+    pub(super) licensed: Vec<DocumentSnapshot>,
+}
+
+impl TreeSnapshot {
+    /// Total number of processed documents across all categories.
+    pub fn count(&self) -> usize {
+        self.count_failed()
+            + self.count_licensed()
+            + self.count_unlicensed()
+            + self.count_modified()
+    }
+
+    /// Number of licensed documents.
+    pub fn count_licensed(&self) -> usize {
+        self.licensed.len()
+    }
+
+    /// Number of modified documents.
+    pub fn count_modified(&self) -> usize {
+        self.modified.len()
+    }
+
+    /// Number of failed documents.
+    pub fn count_failed(&self) -> usize {
+        self.failed.len()
+    }
+
+    /// Number of unlicensed (untouched) documents.
+    pub fn count_unlicensed(&self) -> usize {
+        self.unlicensed.len()
+    }
+
+    /// Return snapshots for a given document state.
+    ///
+    /// Returned snapshots will have their paths stripped of the tree's `src_root`.
+    pub fn get_state(&self, state: DocumentState) -> Vec<DocumentSnapshot> {
+        let source_slice: &[DocumentSnapshot] = match state {
+            DocumentState::Failed => &self.failed,
+            DocumentState::Licensed => &self.licensed,
+            DocumentState::Modified => &self.modified,
+            DocumentState::Unlicensed => &self.unlicensed,
+        };
+
+        // Clone each snapshot and strip the source-root prefix in-place.
+        let mut snapshots: Vec<DocumentSnapshot> = source_slice
+            .iter()
+            .cloned()
+            .map(|mut snap| {
+                snap.strip_path_prefix(&self.src_root);
+                snap
+            })
+            .collect();
+
+        self.sort_snapshots_by_path(&mut snapshots);
+        snapshots
+    }
+
+    fn sort_snapshots_by_path(&self, snapshots: &mut [DocumentSnapshot]) {
+        snapshots.sort_by(|a, b| {
+            let a = a.path().to_str().unwrap_or_default();
+            let b = b.path().to_str().unwrap_or_default();
+            a.cmp(b)
+        })
+    }
+}
+
+type WalkerResult = std::result::Result<DirEntry, ignore::Error>;
+
+/// Builder used to configure a tree walk before execution.
+///
+/// The builder exposes convenience methods to set include/exclude patterns,
+/// configure ignore files and toggle git-ignore behavior. It produces a
+/// `Tree` that performs the actual walk.
 pub struct TreeBuilder {
     src_root: PathBuf,
     max_capacity: usize,
@@ -22,16 +107,7 @@ pub struct TreeBuilder {
     override_builder: OverrideBuilder,
 }
 
-const MAX_CAPACITY: usize = 1000;
-
-use ignore::DirEntry;
-use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
-use serde::Serialize;
-
-use super::TreeSnapshot;
-
-type WalkerResult = std::result::Result<DirEntry, ignore::Error>;
-
+/// Prepared and configured tree ready to run filesystem scans.
 pub struct Tree {
     src_root: PathBuf,
     dry_run: bool,
@@ -40,11 +116,22 @@ pub struct Tree {
 }
 
 impl Tree {
-    // TODO: Implement src_root usage
+    /// Create a new `TreeBuilder` for `src_root`.
+    pub fn builder<P>(src_root: P) -> TreeBuilder
+    where
+        P: AsRef<Path>,
+    {
+        TreeBuilder::new(src_root)
+    }
+
+    /// Returns the source root for this tree.
     pub fn src_root(&self) -> &Path {
         &self.src_root
     }
 
+    /// Run a license update pass over the tree.
+    ///
+    /// `data` is serialized and applied to documents that require a license.
     pub fn update_license_info<T: Serialize + Clone + Sync + Send>(
         &self,
         data: T,
@@ -53,9 +140,10 @@ impl Tree {
             .find_license_candidates()
             .into_par_iter()
             .map(|doc_ref| {
-                let doc = match self.dry_run {
-                    true => doc_ref.read_dry_run(),
-                    false => doc_ref.read(),
+                let doc = if self.dry_run {
+                    doc_ref.read_dry_run()
+                } else {
+                    doc_ref.read()
                 }?;
 
                 let doc = doc.add_license(data.clone())?;
@@ -94,11 +182,12 @@ impl Tree {
         })
     }
 
+    /// Read license metadata from files without modifying them.
     pub fn read_license_info(&self) -> Result<TreeSnapshot> {
         let (untouched, modified, licensed, failed): (Vec<_>, Vec<_>, Vec<_>, Vec<_>) = self
             .find_license_candidates()
             .into_par_iter()
-            .map(|doc_ref| doc_ref.read_to_snapshot())
+            .map(|doc_ref| doc_ref.read_snapshot())
             .filter_map(|doc_ref| doc_ref.ok())
             .fold(
                 || (Vec::new(), Vec::new(), Vec::new(), Vec::new()),
@@ -132,6 +221,7 @@ impl Tree {
         })
     }
 
+    /// Walk the filesystem and collect licensable document references.
     pub fn find_license_candidates(&self) -> Vec<DocumentRef> {
         let (tx, rx) = crossbeam_channel::bounded::<Result<DocumentRef>>(self.max_capacity);
 
@@ -144,7 +234,7 @@ impl Tree {
                 match result {
                     Err(err) => tx.send(Err(err)).unwrap(),
                     Ok(doc_ref) => {
-                        if !doc_ref.is_licensable_file() {
+                        if !doc_ref.is_licensable() {
                             return WalkState::Continue;
                         }
 
@@ -169,8 +259,10 @@ impl Tree {
     }
 }
 
+const MAX_CAPACITY: usize = 1000;
+
 impl TreeBuilder {
-    /// Creates a new builder with the workspace root directory.
+    /// Create a new builder for `src_root`.
     pub fn new<P>(src_root: P) -> Self
     where
         P: AsRef<Path>,
@@ -184,12 +276,12 @@ impl TreeBuilder {
             src_root: src_root.into(),
             max_capacity: MAX_CAPACITY,
             dry_run: false,
-            exclude: vec![],
-            include: vec![],
+            exclude: Vec::new(),
+            include: Vec::new(),
         }
     }
 
-    /// Builds and returns a Walk instance based on the provided configuration.
+    /// Finalize configuration and build the `Tree`.
     pub fn build(mut self) -> Result<Tree> {
         self.build_overrides()?;
         Ok(Tree {
@@ -200,29 +292,29 @@ impl TreeBuilder {
         })
     }
 
-    /// Sets the optional maximum capacity for the receiver in `run_task`.
+    /// Returns the configured source root.
     pub fn src_root(&self) -> &Path {
         &self.src_root
     }
 
-    /// Sets the optional maximum capacity for the receiver in `run_task`.
+    /// Enable or disable dry-run mode.
     pub fn set_dry_run(mut self, yes: bool) -> Self {
         self.dry_run = yes;
         self
     }
 
-    /// Sets the optional maximum capacity for the receiver in `run_task`.
+    /// Set the maximum channel capacity for the walker.
     pub fn set_max_capacity(mut self, max_capacity: usize) -> Self {
         self.max_capacity = max_capacity;
         self
     }
 
-    /// Sets the optional maximum capacity for the receiver in `run_task`.
+    /// Read the configured maximum capacity.
     pub fn max_capacity(&self) -> usize {
         self.max_capacity
     }
 
-    /// Adds glob patterns to exclude files and directories.
+    /// Add exclude glob patterns. Patterns will be normalized via negation helper.
     pub fn exclude<T>(mut self, patterns: Vec<T>) -> Result<Self>
     where
         T: 'static + AsRef<str>,
@@ -230,6 +322,7 @@ impl TreeBuilder {
         if patterns.is_empty() {
             return Ok(self);
         }
+
         let mut patterns: Vec<String> = patterns
             .iter()
             .map(|p| switch_pattern_negation(p.as_ref()))
@@ -239,7 +332,7 @@ impl TreeBuilder {
         Ok(self)
     }
 
-    /// Adds glob patterns to exclude files and directories.
+    /// Replace exclude patterns with the provided list.
     pub fn set_exclude<T>(&mut self, patterns: Vec<T>) -> Result<()>
     where
         T: 'static + AsRef<str>,
@@ -252,7 +345,9 @@ impl TreeBuilder {
         Ok(())
     }
 
-    /// Adds glob patterns to include certain files and directories (overrides excludes).
+    /// Add include patterns that take precedence over exclude patterns.
+    ///
+    /// `None` or an empty list is a no-op.
     pub fn include<T>(&mut self, patterns: Option<Vec<T>>) -> Result<()>
     where
         T: 'static + AsRef<str>,
@@ -266,7 +361,7 @@ impl TreeBuilder {
         Ok(())
     }
 
-    /// Adds a custom file containing *.gitignore*-like patterns to ignore during the walk.
+    /// Add a custom ignore filename. The file is resolved relative to `src_root`.
     #[inline]
     pub fn add_ignore<P>(&mut self, file_name: P) -> &Self
     where
@@ -277,7 +372,7 @@ impl TreeBuilder {
         self
     }
 
-    /// Controls whether to use Git ignore rules (default: enabled).
+    /// Toggle the use of gitignore rules. `yes == true` disables gitignore.
     #[inline]
     pub fn disable_git_ignore(&mut self, yes: bool) -> &Self {
         self.walker_builder.git_ignore(!yes);
@@ -290,13 +385,18 @@ impl TreeBuilder {
         if self.include.is_empty() && self.exclude.is_empty() {
             return Ok(());
         }
-        let patterns = match self.include.is_empty() {
-            true => &self.exclude,
-            false => &self.include,
+
+        // Pick which set of patterns to feed to the override builder.
+        let patterns = if self.include.is_empty() {
+            &self.exclude
+        } else {
+            &self.include
         };
+
         for pattern in patterns {
             self.override_builder.add(pattern)?;
         }
+
         let overrides = self.override_builder.build()?;
         self.walker_builder.overrides(overrides);
 
@@ -304,21 +404,17 @@ impl TreeBuilder {
     }
 }
 
-/// Helper function to negate glob patterns (add/remove leading `!`).
+/// Toggle a leading `!` on a glob pattern.
 ///
-/// Patterns without a leading `!` are prefixed with one.
-/// Patterns with a leading `!` will have that prefix stripped.
-///
-/// Note:
-///
-/// This function assumes the pattern is not an empty string, and/or would not become
-/// an empty string after removing the leading `!`, if it contains one.
+/// If the pattern already starts with `!` the leading character is removed.
+/// Otherwise a leading `!` is added. The function never returns an empty string.
 #[inline]
 fn switch_pattern_negation(pattern: &str) -> String {
-    pattern
-        .strip_prefix('!')
-        .map(|p| p.to_string())
-        .unwrap_or_else(|| format!("!{pattern}"))
+    if let Some(stripped) = pattern.strip_prefix('!') {
+        stripped.to_string()
+    } else {
+        format!("!{pattern}")
+    }
 }
 
 #[cfg(test)]

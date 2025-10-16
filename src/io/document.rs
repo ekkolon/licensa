@@ -18,11 +18,6 @@ impl DocumentRef {
         DocumentRef { entry }
     }
 
-    pub fn read_to_snapshot(&self) -> Result<DocumentSnapshot> {
-        let entry = self.read()?;
-        Ok(entry.into_snapshot())
-    }
-
     pub fn read(&self) -> Result<Document> {
         let path = self.entry.path();
         let content = fs::read_to_string(path)?;
@@ -43,8 +38,13 @@ impl DocumentRef {
         })
     }
 
+    pub fn read_snapshot(&self) -> Result<DocumentSnapshot> {
+        let entry = self.read()?;
+        Ok(DocumentSnapshot::from(entry))
+    }
+
     /// Checks if a directory entry is a candidate for applying a license.
-    pub fn is_licensable_file(&self) -> bool {
+    pub fn is_licensable(&self) -> bool {
         let entry = &self.entry.borrow();
 
         // Only consider entry if it is a regular file
@@ -135,6 +135,16 @@ impl DocumentSnapshot {
     }
 }
 
+impl From<Document> for DocumentSnapshot {
+    fn from(doc: Document) -> Self {
+        if doc.is_licensed() {
+            return DocumentSnapshot::licensed(&doc.path);
+        }
+
+        DocumentSnapshot::untouched(&doc.path)
+    }
+}
+
 pub enum DocumentState {
     Failed,
     Unlicensed,
@@ -163,33 +173,6 @@ const LICENSED_DOCUMENT_BREAKWORDS: &[&str] = &[
 ];
 
 impl Document {
-    pub fn add_license<D: Serialize>(&self, data: D) -> Result<DocumentSnapshot> {
-        if self.is_licensed() {
-            return Ok(DocumentSnapshot::licensed(&self.path));
-        }
-
-        let template_key = self.get_path_suffix();
-        let template = TemplateCache::compile(template_key, SPDX_COPYRIGHT_NOTICE, data)?;
-
-        if self.dry_run {
-            return Ok(DocumentSnapshot::modified(&self.path));
-        }
-
-        let content = self.add_license_header(&template.template);
-        match fs::write(self.path(), content) {
-            Err(err) => Ok(DocumentSnapshot::failed(&self.path, err.to_string())),
-            Ok(_) => Ok(DocumentSnapshot::modified(&self.path)),
-        }
-    }
-
-    pub fn into_snapshot(self) -> DocumentSnapshot {
-        if self.is_licensed() {
-            return DocumentSnapshot::licensed(&self.path);
-        }
-
-        DocumentSnapshot::untouched(&self.path)
-    }
-
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -216,11 +199,19 @@ impl Document {
         false
     }
 
-    fn add_license_header<H>(&self, header: H) -> Vec<u8>
-    where
-        H: AsRef<str>,
-    {
-        let template = header.as_ref().as_bytes().to_vec();
+    pub fn add_license<D: Serialize>(&self, data: D) -> Result<DocumentSnapshot> {
+        if self.is_licensed() {
+            return Ok(DocumentSnapshot::licensed(&self.path));
+        }
+
+        let template_key = self.get_path_suffix();
+        let template = TemplateCache::compile(template_key, SPDX_COPYRIGHT_NOTICE, data)?;
+
+        if self.dry_run {
+            return Ok(DocumentSnapshot::modified(&self.path));
+        }
+
+        let template = template.template.as_bytes().to_vec();
         let file_content = self.content.as_ref().as_bytes();
         let mut line = extract_hash_bang(file_content).unwrap_or_default();
         let mut content = file_content.to_vec();
@@ -237,14 +228,11 @@ impl Document {
             content = [template, content].concat();
         }
 
-        content
+        match fs::write(self.path(), content) {
+            Err(err) => Ok(DocumentSnapshot::failed(&self.path, err.to_string())),
+            Ok(_) => Ok(DocumentSnapshot::modified(&self.path)),
+        }
     }
-
-    // TODO: Implement src_root usage
-    //fn get_template_def(&self) -> Option<&HeaderDefinition<'_>> {
-    //    let lookup_name = self.get_path_suffix();
-    //    SourceHeaders::find_header_definition_by_extension(&lookup_name)
-    //}
 
     fn get_path_suffix(&self) -> String {
         self.path.extension().map_or_else(

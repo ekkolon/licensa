@@ -3,7 +3,7 @@
 
 use crate::cli::flags::Flags;
 use crate::cli::{Exit, Step};
-use crate::console::{Line, Logger};
+use crate::utils::console::{Line, Logger};
 use crate::{Error, Result};
 
 use clap::Parser;
@@ -33,9 +33,9 @@ impl Step for UninstallStep {
 
 fn confirm(logger: &mut Logger<'_>, cmd: &str, force: bool) -> Result<()> {
     if force {
-        logger.write_line(Line::new(format!(
-            "Force mode enabled. Skipping confirmation for `{cmd}`."
-        )))?;
+        logger.write_line(
+            Line::new("Force mode enabled. Skipping confirmation for `{cmd}`.").bind("cmd", cmd),
+        )?;
         return Ok(());
     }
 

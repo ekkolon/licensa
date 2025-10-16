@@ -5,11 +5,10 @@ mod traits;
 
 use serde::Serialize;
 pub use traits::*;
+pub mod commands;
 pub mod flags;
 
 use clap::Parser;
-
-use crate::commands::Command;
 
 /// Licensa is a powerful CLI tool designed for seamless source code license management.
 ///
@@ -27,5 +26,5 @@ use crate::commands::Command;
 pub struct Cli {
     /// Specifies the command or subcommand to execute.
     #[command(subcommand)]
-    pub step: Command,
+    pub step: self::commands::Command,
 }
